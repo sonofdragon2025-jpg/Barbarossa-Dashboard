@@ -5,6 +5,8 @@ const STORE=process.env.DATA_FILE||path.join(__dirname,'data','state.json'),CAP=
 // Safety lock: provider-side hard caps/prepaid balances have not been verified.
 // Do not enable billable execution or owner approval via environment variables alone.
 const BILLING_GUARD_VERIFIED=false;
+// Phase 2.2: reporting only. No external execution or billable operations are permitted.
+const STARTUP_MONTHLY_LIMIT_CENTS=10000;
 const DURABLE_LEDGER_VERIFIED=false; // No transactional external database configured; fail closed.
 if(PASSWORD.length<16){console.error('Set BARBAROSSA_OWNER_PASSWORD (16+ characters) in Render Environment');process.exit(1);}
 const salt=crypto.randomBytes(16), passwordHash=crypto.scryptSync(PASSWORD,salt,64);
@@ -12,10 +14,15 @@ const sessions=new Map(), attempts=new Map(), TTL=8*60*60*1000;
 const databaseConfigured=Boolean(process.env.DATABASE_URL);
 let pool=null,storageReady=false,writeQueue=Promise.resolve();
 let state={paused:true,tasks:[],audit:[],committedMonthlyCost:0};
+function monthUTC(){return new Date().toISOString().slice(0,7);}
+function validCents(value){return Number.isSafeInteger(value)&&value>=0;}
+function sumLedger(rows,month){return rows.filter(x=>x.month===month).reduce((sum,x)=>sum+x.amountCents,0);}
+function ledgerSummary(){const month=monthUTC(),rows=Array.isArray(state.spendingLedger)?state.spendingLedger:[];const recordedCents=sumLedger(rows,month);return {month,capCents:STARTUP_MONTHLY_LIMIT_CENTS,recordedCents,remainingCents:Math.max(0,STARTUP_MONTHLY_LIMIT_CENTS-recordedCents),providerBillingVerified:false,ledgerTransactionalVerified:false,externalSpendPermitted:false};}
 if(!databaseConfigured){try{state=JSON.parse(fs.readFileSync(STORE,'utf8'));}catch(e){if(e.code!=='ENOENT')throw e;}}
 state.paused=true; // Always pause on restart; unpause blocked until safeguards verified
+if(!Array.isArray(state.spendingLedger))state.spendingLedger=[];
 async function save(){if(databaseConfigured){if(!storageReady)throw Error('Database unavailable');const snapshot=JSON.stringify(state);const write=writeQueue.then(()=>pool.query('UPDATE barbarossa_state SET data=$1::jsonb WHERE id=1',[snapshot]));writeQueue=write.catch(()=>{});await write;return;}fs.mkdirSync(path.dirname(STORE),{recursive:true});const tmp=STORE+'.tmp';fs.writeFileSync(tmp,JSON.stringify(state),{mode:0o600});fs.renameSync(tmp,STORE);}
-async function initializeStorage(){if(!databaseConfigured){storageReady=true;return;}const {Pool}=require('pg');pool=new Pool({connectionString:process.env.DATABASE_URL,ssl:{rejectUnauthorized:true},max:2,connectionTimeoutMillis:10000});await pool.query('CREATE TABLE IF NOT EXISTS barbarossa_state (id integer PRIMARY KEY, data jsonb NOT NULL)');await pool.query('INSERT INTO barbarossa_state(id,data) VALUES (1,$1::jsonb) ON CONFLICT (id) DO NOTHING',[JSON.stringify(state)]);const result=await pool.query('SELECT data FROM barbarossa_state WHERE id=1');state=result.rows[0].data;state.paused=true;storageReady=true;}
+async function initializeStorage(){if(!databaseConfigured){storageReady=true;return;}const {Pool}=require('pg');pool=new Pool({connectionString:process.env.DATABASE_URL,ssl:{rejectUnauthorized:true},max:2,connectionTimeoutMillis:10000});await pool.query('CREATE TABLE IF NOT EXISTS barbarossa_state (id integer PRIMARY KEY, data jsonb NOT NULL)');await pool.query('INSERT INTO barbarossa_state(id,data) VALUES (1,$1::jsonb) ON CONFLICT (id) DO NOTHING',[JSON.stringify(state)]);const result=await pool.query('SELECT data FROM barbarossa_state WHERE id=1');state=result.rows[0].data;state.paused=true;if(!Array.isArray(state.spendingLedger))state.spendingLedger=[];storageReady=true;}
 function json(res,status,data,headers={}){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer',...headers});res.end(JSON.stringify(data));}
 function html(res,s){res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Frame-Options':'DENY','Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"});res.end(s);}
 function cookie(req){const m=(req.headers.cookie||'').match(/(?:^|;\s*)barbarossa_session=([a-f0-9]{64})(?:;|$)/);return m&&m[1];}
