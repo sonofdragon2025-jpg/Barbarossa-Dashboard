@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#101827"><title>Barbarossa Dashboard</title>
-<style>*{box-sizing:border-box}body{margin:0;background:#0c1423;color:#edf3fb;font-family:system-ui,-apple-system,Segoe UI,sans-serif}header{padding:26px 20px;background:#17263b;border-bottom:1px solid #35445c}h1{margin:0;font-size:1.8rem}header p{color:#aebed1;margin:8px 0 0}main{max-width:1100px;margin:auto;padding:24px 16px}.notice{border:1px solid #9a7635;background:#32291c;padding:16px;border-radius:12px;color:#ffe3ad}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:22px}.card{border:1px solid #34435a;background:#172337;padding:18px;border-radius:14px;min-height:148px}.card h2{font-size:1.15rem;margin:0 0 10px}.card p{color:#b4c2d4;font-size:.94rem;line-height:1.5}.tag{font-size:.75rem;color:#ffd58b}footer{padding:25px 16px;text-align:center;color:#9db0c7;font-size:.85rem}</style></head><body><header><h1>Barbarossa</h1><p>Private operations dashboard • Hiott Holding LLC</p></header><main><div class="notice"><strong>Phase 1 — Static dashboard</strong><div>This interface is a deployment preview. AI agents, publishing, task execution, and account integrations are not connected. No automated actions are running.</div></div><section class="grid">
+<style>*{box-sizing:border-box}body{margin:0;background:#0c1423;color:#edf3fb;font-family:system-ui,-apple-system,Segoe UI,sans-serif}header{padding:26px 20px;background:#17263b;border-bottom:1px solid #35445c}h1{margin:0;font-size:1.8rem}header p{color:#aebed1;margin:8px 0 0}main{max-width:1100px;margin:auto;padding:24px 16px}.notice{border:1px solid #9a7635;background:#32291c;padding:16px;border-radius:12px;color:#ffe3ad}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:22px}.card{border:1px solid #34435a;background:#172337;padding:18px;border-radius:14px;min-height:148px}.card h2{font-size:1.15rem;margin:0 0 10px}.card p{color:#b4c2d4;font-size:.94rem;line-height:1.5}.tag{font-size:.75rem;color:#ffd58b}footer{padding:25px 16px;text-align:center;color:#9db0c7;font-size:.85rem}</style></head><body><header><h1>Barbarossa</h1><p>Private operations dashboard • Hiott Holding LLC</p></header><main><div class="notice"><strong>Phase 1 — Static dashboard</strong><div>This interface is a deployment preview. AI agents, publishing, task execution, and account integrations are not connected. No automated actions are running.</div></div><section class="card" style="margin-top:20px;min-height:auto" aria-live="polite"><h2>Phase 2 API Connection</h2><p id="api-status">Checking backend health…</p><span class="tag" id="api-detail">Read-only public health check; no admin credentials used.</span><p><button id="api-recheck" type="button" style="background:#29466b;color:white;border:1px solid #597396;padding:10px 16px;border-radius:9px;cursor:pointer">Check again</button></p></section><section class="grid">
 <article class="card"><h2>Tasks</h2><p>Task queue and execution status will appear here.</p><span class="tag">Not connected</span></article>
 <article class="card"><h2>Research</h2><p>Source-backed research workflows.</p><span class="tag">Not connected</span></article>
 <article class="card"><h2>Publishing</h2><p>Maintenance products under Hiott Holding LLC branding.</p><span class="tag">Not connected</span></article>
@@ -9,4 +9,31 @@
 <article class="card"><h2>Finance</h2><p>Read-only analysis and simulation planned; no trades.</p><span class="tag">Not connected</span></article>
 <article class="card"><h2>Approvals</h2><p>Payments, publishing, messages, and major actions require owner approval.</p><span class="tag">Backend required</span></article>
 <article class="card"><h2>Budget</h2><p>Startup operating cap: $100/month. This is a policy target, not an active spending control.</p><span class="tag">Enforcement pending</span></article>
-</section></main><footer>Barbarossa • Phase 1 deployment preview • No external actions enabled</footer></body></html>
+</section></main><footer>Barbarossa • Phase 1 deployment preview • No external actions enabled</footer><script>
+(function(){
+  const url="https://barbarossa-dashboard-2026.onrender.com/health";
+  const status=document.getElementById('api-status');
+  const detail=document.getElementById('api-detail');
+  const btn=document.getElementById('api-recheck');
+  async function check(){
+    btn.disabled=true; status.textContent='Checking backend health…';
+    try{
+      const response=await fetch(url,{method:'GET',cache:'no-store',signal:AbortSignal.timeout(20000)});
+      if(!response.ok)throw new Error('HTTP '+response.status);
+      const data=await response.json();
+      if(data.status==='ok' && data.phase===2 && data.externalActionsEnabled===false){
+        status.textContent='API online — Phase 2 health check passed';
+        detail.textContent='External actions disabled. Authentication, persistence, and spending controls not verified.';
+      }else{
+        status.textContent='API responded, but returned an unexpected health status';
+        detail.textContent='Review the backend before enabling any operations.';
+      }
+    }catch(error){
+      status.textContent='API connection not confirmed';
+      detail.textContent='The service may be sleeping, unreachable, or blocking browser access. '+error.message;
+    }finally{btn.disabled=false;}
+  }
+  btn.addEventListener('click',check);
+  check();
+})();
+</script></body></html>
