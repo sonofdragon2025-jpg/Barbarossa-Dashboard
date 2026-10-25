@@ -9,10 +9,13 @@ const DURABLE_LEDGER_VERIFIED=false; // No transactional external database confi
 if(PASSWORD.length<16){console.error('Set BARBAROSSA_OWNER_PASSWORD (16+ characters) in Render Environment');process.exit(1);}
 const salt=crypto.randomBytes(16), passwordHash=crypto.scryptSync(PASSWORD,salt,64);
 const sessions=new Map(), attempts=new Map(), TTL=8*60*60*1000;
+const databaseConfigured=Boolean(process.env.DATABASE_URL);
+let pool=null,storageReady=false,writeQueue=Promise.resolve();
 let state={paused:true,tasks:[],audit:[],committedMonthlyCost:0};
-try{state=JSON.parse(fs.readFileSync(STORE,'utf8'));}catch(e){if(e.code!=='ENOENT')throw e;}
+if(!databaseConfigured){try{state=JSON.parse(fs.readFileSync(STORE,'utf8'));}catch(e){if(e.code!=='ENOENT')throw e;}}
 state.paused=true; // Always pause on restart; unpause blocked until safeguards verified
-function save(){fs.mkdirSync(path.dirname(STORE),{recursive:true});const tmp=STORE+'.tmp';fs.writeFileSync(tmp,JSON.stringify(state),{mode:0o600});fs.renameSync(tmp,STORE);}
+async function save(){if(databaseConfigured){if(!storageReady)throw Error('Database unavailable');const snapshot=JSON.stringify(state);const write=writeQueue.then(()=>pool.query('UPDATE barbarossa_state SET data=$1::jsonb WHERE id=1',[snapshot]));writeQueue=write.catch(()=>{});await write;return;}fs.mkdirSync(path.dirname(STORE),{recursive:true});const tmp=STORE+'.tmp';fs.writeFileSync(tmp,JSON.stringify(state),{mode:0o600});fs.renameSync(tmp,STORE);}
+async function initializeStorage(){if(!databaseConfigured){storageReady=true;return;}const {Pool}=require('pg');pool=new Pool({connectionString:process.env.DATABASE_URL,ssl:{rejectUnauthorized:true},max:2,connectionTimeoutMillis:10000});await pool.query('CREATE TABLE IF NOT EXISTS barbarossa_state (id integer PRIMARY KEY, data jsonb NOT NULL)');await pool.query('INSERT INTO barbarossa_state(id,data) VALUES (1,$1::jsonb) ON CONFLICT (id) DO NOTHING',[JSON.stringify(state)]);const result=await pool.query('SELECT data FROM barbarossa_state WHERE id=1');state=result.rows[0].data;state.paused=true;storageReady=true;}
 function json(res,status,data,headers={}){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer',...headers});res.end(JSON.stringify(data));}
 function html(res,s){res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Frame-Options':'DENY','Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"});res.end(s);}
 function cookie(req){const m=(req.headers.cookie||'').match(/(?:^|;\s*)barbarossa_session=([a-f0-9]{64})(?:;|$)/);return m&&m[1];}
@@ -34,10 +37,11 @@ $('create').onclick=async()=>{try{await request('/api/tasks','POST',{title:$('ti
 $('pause').onclick=async()=>{try{const s=await request('/api/status');await request('/api/pause','POST',{paused:!s.paused});await refresh();}catch(e){message(e.message);}};
 check();
 </script></body></html>`;
-http.createServer(async(req,res)=>{
+const server=http.createServer(async(req,res)=>{
  const u=new URL(req.url,'http://localhost').pathname,method=req.method,ip=req.headers['x-forwarded-for']?.split(',')[0]||req.socket.remoteAddress||'unknown';
- if(u==='/health'&&method==='GET')return json(res,200,{status:'ok',phase:2,externalActionsEnabled:false,taskManagement:'password-session'},{'Access-Control-Allow-Origin':'https://barbarossa-dashboard.onrender.com','Vary':'Origin'});
+ if(u==='/health'&&method==='GET')return json(res,storageReady?200:503,{status:storageReady?'ok':'storage-unavailable',phase:2,externalActionsEnabled:false,taskManagement:'password-session'},{'Access-Control-Allow-Origin':'https://barbarossa-dashboard.onrender.com','Vary':'Origin'});
  if((u==='/'||u==='/login')&&method==='GET')return html(res,page);
+ if(!storageReady)return json(res,503,{error:'Storage unavailable; all changes blocked'});
  if(!originOK(req))return json(res,403,{error:'Origin not allowed'});
  try{
   if(u==='/auth/login'&&method==='POST'){
@@ -52,14 +56,15 @@ http.createServer(async(req,res)=>{
   if(u==='/auth/session'&&method==='GET')return json(res,200,{csrf:s.csrf});
   if(method!=='GET'&&!csrfOK(req,s))return json(res,403,{error:'Invalid CSRF token'});
   if(u==='/auth/logout'&&method==='POST'){sessions.delete(cookie(req));return json(res,200,{ok:true},{'Set-Cookie':'barbarossa_session=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0'});}
-  if(u==='/api/status'&&method==='GET')return json(res,200,{durableLedgerVerified:DURABLE_LEDGER_VERIFIED,paidOperationsAllowed:false,paused:state.paused,budgetCap:CAP,billingGuardVerified:BILLING_GUARD_VERIFIED,committedMonthlyCost:state.committedMonthlyCost,externalActionsEnabled:false,persistence:process.env.DATA_FILE?'configured path; verify disk mount':'ephemeral local file'});
+  if(u==='/api/status'&&method==='GET')return json(res,200,{durableLedgerVerified:DURABLE_LEDGER_VERIFIED,paidOperationsAllowed:false,paused:state.paused,budgetCap:CAP,billingGuardVerified:BILLING_GUARD_VERIFIED,committedMonthlyCost:state.committedMonthlyCost,externalActionsEnabled:false,persistence:databaseConfigured?'Neon PostgreSQL (connection configured; restart test required)':process.env.DATA_FILE?'configured path; verify disk mount':'ephemeral local file'});
   if(u==='/api/tasks'&&method==='GET')return json(res,200,{tasks:state.tasks});
    if(u==='/api/export'&&method==='GET')return json(res,200,{exportedAt:new Date().toISOString(),warning:'Backup only, not durable transactional storage',state},{'Content-Disposition':'attachment; filename="barbarossa-backup.json"'});
   if(u==='/api/audit'&&method==='GET')return json(res,200,{audit:state.audit.slice(-100)});
-  if(u==='/api/tasks'&&method==='POST'){const b=await read(req);if(typeof b.title!=='string'||!b.title.trim()||b.title.length>160)return json(res,400,{error:'Invalid title'});const estimatedCost=b.estimatedCost;if(typeof estimatedCost!=='number'||!Number.isFinite(estimatedCost)||estimatedCost<0||estimatedCost>CAP)return json(res,400,{error:'Invalid estimated cost'});const type=['research','maintenance-draft','publishing','message','payment','trade','other'].includes(b.type)?b.type:'other';const task={id:crypto.randomUUID(),title:b.title.trim(),type,estimatedCost,status:'pending-approval',createdAt:new Date().toISOString()};state.tasks.push(task);audit('task-created',task.id);save();return json(res,201,{task});}
+  if(u==='/api/tasks'&&method==='POST'){const b=await read(req);if(typeof b.title!=='string'||!b.title.trim()||b.title.length>160)return json(res,400,{error:'Invalid title'});const estimatedCost=b.estimatedCost;if(typeof estimatedCost!=='number'||!Number.isFinite(estimatedCost)||estimatedCost<0||estimatedCost>CAP)return json(res,400,{error:'Invalid estimated cost'});const type=['research','maintenance-draft','publishing','message','payment','trade','other'].includes(b.type)?b.type:'other';const task={id:crypto.randomUUID(),title:b.title.trim(),type,estimatedCost,status:'pending-approval',createdAt:new Date().toISOString()};state.tasks.push(task);audit('task-created',task.id);await save();return json(res,201,{task});}
   const match=u.match(/^\/api\/tasks\/([a-f0-9-]+)\/(approve|reject)$/);
-  if(match&&method==='POST'){const task=state.tasks.find(t=>t.id===match[1]);if(!task)return json(res,404,{error:'Task not found'});if(task.status!=='pending-approval')return json(res,409,{error:'Already reviewed'});if(match[2]==='approve'){if(state.paused)return json(res,409,{error:'Global pause enabled'});if(state.committedMonthlyCost+task.estimatedCost>CAP)return json(res,409,{error:'Budget estimate cap exceeded'});state.committedMonthlyCost+=task.estimatedCost;task.status='approved-not-executed';task.approvedAt=new Date().toISOString();}else task.status='rejected';audit('task-'+match[2],task.id);save();return json(res,200,{task,externalActionExecuted:false});}
-  if(u==='/api/pause'&&method==='POST'){const b=await read(req);if(typeof b.paused!=='boolean')return json(res,400,{error:'Invalid pause value'});if(b.paused===false&&(!BILLING_GUARD_VERIFIED||!DURABLE_LEDGER_VERIFIED))return json(res,409,{error:'Global Pause locked ON until provider billing controls AND durable spending ledger are independently verified'});state.paused=b.paused;audit(b.paused?'paused':'unpaused',null);save();return json(res,200,{paused:state.paused});}
+  if(match&&method==='POST'){const task=state.tasks.find(t=>t.id===match[1]);if(!task)return json(res,404,{error:'Task not found'});if(task.status!=='pending-approval')return json(res,409,{error:'Already reviewed'});if(match[2]==='approve'){if(state.paused)return json(res,409,{error:'Global pause enabled'});if(state.committedMonthlyCost+task.estimatedCost>CAP)return json(res,409,{error:'Budget estimate cap exceeded'});state.committedMonthlyCost+=task.estimatedCost;task.status='approved-not-executed';task.approvedAt=new Date().toISOString();}else task.status='rejected';audit('task-'+match[2],task.id);await save();return json(res,200,{task,externalActionExecuted:false});}
+  if(u==='/api/pause'&&method==='POST'){const b=await read(req);if(typeof b.paused!=='boolean')return json(res,400,{error:'Invalid pause value'});if(b.paused===false&&(!BILLING_GUARD_VERIFIED||!DURABLE_LEDGER_VERIFIED))return json(res,409,{error:'Global Pause locked ON until provider billing controls AND durable spending ledger are independently verified'});state.paused=b.paused;audit(b.paused?'paused':'unpaused',null);await save();return json(res,200,{paused:state.paused});}
   return json(res,404,{error:'Not found'});
  }catch(e){return json(res,400,{error:e.message});}
-}).listen(PORT,'0.0.0.0',()=>console.log('Barbarossa secure Phase 2 API listening on '+PORT));
+});
+initializeStorage().then(()=>{server.listen(PORT,'0.0.0.0',()=>console.log('Barbarossa secure Phase 2 API listening on '+PORT));}).catch(e=>{console.error('Database initialization failed:',e.message);process.exit(1);});
