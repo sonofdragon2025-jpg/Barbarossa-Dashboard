@@ -33,7 +33,7 @@ check();
 http.createServer(async(req,res)=>{
  const u=req.url,method=req.method,ip=req.headers['x-forwarded-for']?.split(',')[0]||req.socket.remoteAddress||'unknown';
  if(u==='/health'&&method==='GET')return json(res,200,{status:'ok',phase:2,externalActionsEnabled:false,taskManagement:'password-session'},{'Access-Control-Allow-Origin':'https://barbarossa-dashboard.onrender.com','Vary':'Origin'});
- if(u==='/'&&method==='GET')return html(res,page);
+ if((u==='/'||u==='/login')&&method==='GET')return html(res,page);
  if(!originOK(req))return json(res,403,{error:'Origin not allowed'});
  try{
   if(u==='/auth/login'&&method==='POST'){
