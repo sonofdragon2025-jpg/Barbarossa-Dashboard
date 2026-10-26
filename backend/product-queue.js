@@ -1,0 +1,17 @@
+'use strict';
+const crypto=require('node:crypto');
+const TOPICS=[
+ {slug:'asset-criticality',title:'Asset Criticality Assessment Worksheet',sections:['Asset inventory','Safety and production consequence scoring','Lead time and redundancy','Priority review']},
+ {slug:'rca-5why',title:'Root Cause Analysis and 5-Why Investigation Kit',sections:['Problem statement','Evidence collection','Five why analysis','Corrective action validation']},
+ {slug:'pm-audit',title:'Preventive Maintenance Quality Audit Checklist',sections:['Work order completeness','OEM task validation','Safety prerequisites','Follow-up defects']},
+ {slug:'spares',title:'Critical Spare Parts Planning Workbook',sections:['Lead times','Failure consequences','Stockout risks','Reorder review']},
+ {slug:'shift-handoff',title:'Maintenance Shift Handoff Template',sections:['Open breakdowns','Safety concerns','Temporary repairs','Next shift ownership']},
+ {slug:'backlog',title:'Maintenance Backlog Prioritization Toolkit',sections:['Risk scoring','Ready-to-schedule gate','Weekly review','Age and trend']},
+ {slug:'kpi',title:'Maintenance KPI Definitions and Scorecard',sections:['PM compliance','Schedule compliance','MTTR and MTBF','Emergency work share']}
+];
+function dateString(d){return d.toISOString().slice(0,10);}
+function draftFor(day){if(!/^\d{4}-\d{2}-\d{2}$/.test(day))throw Error('Invalid day');const n=Math.floor(Date.parse(day+'T00:00:00Z')/86400000),topic=TOPICS[((n%TOPICS.length)+TOPICS.length)%TOPICS.length];const title=topic.title;const lines=[`# ${title}`,'**Hiott Holding LLC** | Working draft | Not published','',`Prepared: ${day}`,'','## Instructions','Adapt to site-specific OEM guidance, CMMS terminology, hazard assessments, and procedures. Review before customer distribution.'];for(const section of topic.sections){lines.push('',`## ${section}`,'- Objective: [Define desired result]','- Responsible owner: [Name / role]','- Asset / area: [ID / location]','- Evidence or baseline: [Record]','- Action and due date: [Enter]','- Verification / sign-off: [Enter]');}lines.push('','## Quality assurance before publishing','- [ ] Validate technical claims and calculations','- [ ] Confirm all safety and regulatory caveats','- [ ] Check uniqueness, usefulness, formatting and licensing','- [ ] Owner approves final product, price and storefront publication','','© Hiott Holding LLC. All rights reserved.');return {day,slug:topic.slug,title,markdown:lines.join('\n'),status:'draft-needs-review'};}
+async function init(pool){await pool.query(`CREATE TABLE IF NOT EXISTS barbarossa_product_queue (day text PRIMARY KEY, slug text NOT NULL, title text NOT NULL, markdown text NOT NULL, status text NOT NULL DEFAULT 'draft-needs-review', created_at timestamptz NOT NULL DEFAULT now(), CHECK(status IN ('draft-needs-review','approved-for-packaging','packaged','published')))`);}
+async function generate(pool,day){const d=draftFor(day);await pool.query('INSERT INTO barbarossa_product_queue(day,slug,title,markdown,status) VALUES($1,$2,$3,$4,$5) ON CONFLICT(day) DO NOTHING',[d.day,d.slug,d.title,d.markdown,d.status]);const r=await pool.query('SELECT day,slug,title,status,created_at FROM barbarossa_product_queue WHERE day=$1',[day]);return r.rows[0];}
+async function list(pool){const r=await pool.query('SELECT day,slug,title,status,created_at FROM barbarossa_product_queue ORDER BY day DESC LIMIT 60');return r.rows;}
+module.exports={init,generate,list,draftFor};
