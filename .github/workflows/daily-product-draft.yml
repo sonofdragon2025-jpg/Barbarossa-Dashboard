@@ -20,7 +20,7 @@ jobs:
             exit 1
           fi
           python3 - <<'PY'
-          import os, json, urllib.request, http.cookiejar
+          import os, json, urllib.request, urllib.error, http.cookiejar
           base=os.environ['BARBAROSSA_BASE_URL'].rstrip('/')
           if not base.startswith('https://'): raise RuntimeError('HTTPS required')
           jar=http.cookiejar.CookieJar()
@@ -29,7 +29,14 @@ jobs:
               headers={'Content-Type':'application/json'}
               if csrf: headers['X-CSRF-Token']=csrf
               req=urllib.request.Request(base+path,data=json.dumps(body).encode() if body is not None else None,headers=headers,method='POST' if body is not None else 'GET')
-              with opener.open(req,timeout=25) as response:return json.load(response)
+              try:
+                  with opener.open(req,timeout=25) as response:return json.load(response)
+              except urllib.error.HTTPError as e:
+                  if path=='/auth/login' and e.code==401:
+                      raise RuntimeError('Barbarossa rejected GitHub owner credentials (401). Re-enter BARBAROSSA_OWNER_PASSWORD repository secret to match Render.') from None
+                  if e.code==429:
+                      raise RuntimeError('Barbarossa login rate limit (429). Wait 15 minutes before retrying.') from None
+                  raise RuntimeError('Barbarossa request '+path+' returned HTTP '+str(e.code)) from None
           login=call('/auth/login',{'password':os.environ['BARBAROSSA_OWNER_PASSWORD']})
           csrf=login.get('csrf') or call('/auth/session').get('csrf')
           if not csrf: raise RuntimeError('No CSRF token')
