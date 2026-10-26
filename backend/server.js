@@ -58,7 +58,8 @@ const server=http.createServer(async(req,res)=>{
  if(u==='/health'&&method==='GET')return json(res,storageReady?200:503,{status:storageReady?'ok':'storage-unavailable',phase:2,externalActionsEnabled:false,taskManagement:'password-session'},{'Access-Control-Allow-Origin':'https://barbarossa-dashboard.onrender.com','Vary':'Origin'});
  if((u==='/'||u==='/login')&&method==='GET')return html(res,page);
  if(!storageReady)return json(res,503,{error:'Storage unavailable; all changes blocked'});
- if(!originOK(req))return json(res,403,{error:'Origin not allowed'});
+ if(u==='/webhooks/payhip'&&method==='POST'){if(!databaseConfigured||!storageReady||!PAYHIP_API_KEY)return json(res,503,{error:'Webhook not configured'});try{const b=await read(req);const result=await payhipWebhook.ingest(pool,b,PAYHIP_API_KEY);return json(res,result.status,{ok:result.status===200,recorded:!!result.recorded,duplicate:!!result.duplicate,error:result.error});}catch(e){console.error('Payhip webhook failed:',e.message);return json(res,503,{error:'Webhook processing unavailable'});}}
+  if(!originOK(req))return json(res,403,{error:'Origin not allowed'});
  try{
   if(u==='/auth/login'&&method==='POST'){
    const now=Date.now(),h=attempts.get(ip)||{count:0,until:now+15*60*1000};if(now>h.until){h.count=0;h.until=now+15*60*1000;}if(h.count>=8)return json(res,429,{error:'Too many attempts; try later'});
