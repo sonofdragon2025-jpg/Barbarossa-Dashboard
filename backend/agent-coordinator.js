@@ -74,6 +74,7 @@ function completeTask(current, step, {expectedVersion, output}) {
   if (!Number.isSafeInteger(expectedVersion) || expectedVersion !== current.version) fail('Stale run version; reload before submitting');
   const run = structuredClone(current), task = run.tasks[step];
   if (!task || task.status !== 'ready' || run.status === 'needs-owner-intervention') fail('Task is not ready');
+  if (task.lease) fail('Task has a worker assignment; submit through the worker endpoint');
   validateOutput(step, output, run);
   task.output = structuredClone(output); task.attempts++; task.status = 'complete';
   run.version++;
@@ -81,7 +82,7 @@ function completeTask(current, step, {expectedVersion, output}) {
   // Rejecting quality invalidates the build and all downstream work. At most one rebuild.
   if (step === 'quality' && output.verdict === 'revise') {
     run.revisionFeedback = output.summary;
-    for (const [id] of STEPS.slice(2)) { delete run.tasks[id].output; run.tasks[id].status = 'waiting'; }
+    for (const [id] of STEPS.slice(2)) { delete run.tasks[id].output; delete run.tasks[id].lease; delete run.tasks[id].completedBy; delete run.tasks[id].submittedVia; run.tasks[id].status = 'waiting'; }
     if (run.tasks.build.attempts >= 2) run.status = 'needs-owner-intervention';
   }
   refresh(run);

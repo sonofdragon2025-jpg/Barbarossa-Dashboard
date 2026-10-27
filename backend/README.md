@@ -1,37 +1,34 @@
-# Barbarossa Phase 2 — backend starter
+# Barbarossa backend
 
-This is source code only. **Not deployed or production-ready.** The Phase 1 static dashboard continues to run independently.
+Private Node.js service for owner task management, product seeds, revenue records and specialist coordination. The code is not proof of a live deployment or autonomous revenue. External paid execution, publishing and trading remain disabled.
 
-## What is implemented
-- Node.js standard-library HTTP API; no npm packages or AI subscription required to run the starter.
-- Bearer-token authentication, fixed HTTPS CORS origin, basic per-IP rate limiting, task queue, audit trail.
-- Owner approve/reject endpoints; global pause defaults ON.
-- Hard-coded $100 task cost reservation cap for demonstration.
-- No external actions: approving a task does NOT publish, send messages, charge money, execute trades, or invoke AI.
+## Run and validate
 
-## Required environment variables
-- `BARBAROSSA_ADMIN_TOKEN`: generate a unique random secret of at least 32 characters; never put it in GitHub or client-side HTML.
-- `DASHBOARD_ORIGIN`: `https://barbarossa-dashboard.onrender.com` (exact origin, no trailing slash).
-- `PORT`: assigned by Render automatically.
-- `DATA_FILE`: location on a persistent disk, if one is provisioned.
+Install dependencies in backend, run npm run check and npm test, then npm start. Node.js 22 is used for CI. Required owner setting: BARBAROSSA_OWNER_PASSWORD (16+ characters). PORT is supplied by the host.
 
-## Endpoints
-- `GET /health` public (no secrets)
-- `GET /api/status`, `GET /api/tasks`, `GET /api/audit` authenticated
-- `POST /api/tasks` JSON: `{"title":"Draft a PM checklist","type":"maintenance-draft","estimatedCost":0}`
-- `POST /api/tasks/:id/approve` and `/reject`
-- `POST /api/pause` JSON: `{"paused":false}` (approval requires unpaused state)
+DATABASE_URL enables PostgreSQL persistence and transactional coordination. Without it, legacy owner tasks use DATA_FILE or an ephemeral local file; agent runs and worker assignments require PostgreSQL. PAYHIP_API_KEY is optional for the existing sale webhook and does not provide product-upload capability.
 
-All /api routes require `Authorization: Bearer <secret>`. Never put this secret into the static dashboard, browser JavaScript, or a public URL.
+BARBAROSSA_WORKERS_JSON optionally configures separate role credentials. Leave it absent until worker provisioning is ready. See WORKER-ACCESS.md for scope, token format, assignment expiry and deployment prerequisites. Never place environment secrets in browser code or the repository.
 
-## Before a real deployment
-1. Select an appropriate Render **Web Service** (not Static Site) and review actual pricing. Do not activate a paid service without owner approval. Set root directory `backend`, start command `node server.js`.
-2. Replace the bearer-token prototype with real owner authentication, secure server-managed sessions, and CSRF protections.
-3. Replace the local JSON file with durable managed storage or a persistent disk and tested backups. Render's ephemeral filesystem is NOT durable.
-4. Add authenticated dashboard integration via secure sessions; do not expose admin credentials in public assets.
-5. Implement actual billing usage reconciliation and month rollover. Current `committedMonthlyCost` is a simple reservation tally, not real provider spending, and does not reset automatically.
-6. Add a durable job queue, retry safety, authorization policy per action, and tests before enabling external integrations.
-7. Confirm that monthly totals across hosting, AI, storage, and other providers remain <= $100, with a separate provider-side spending limit where possible.
+## Access and routes
 
-## Safety
-Approval is not execution. No external publishing, payment, trading, email, or AI calls are implemented. Keep global pause ON until security review and testing are complete.
+The owner uses /login with an HttpOnly session cookie and CSRF protection for mutations. Generic owner tasks retain their legacy review UI; approving a task does not execute it.
+
+- /health is public and reports service readiness, worker API version and deployment build identifier when provided by the host.
+- /api/status, /api/tasks, /api/audit and /api/export support owner task management.
+- /api/products exposes product seeds and downloads; generate-today seeds a linked coordination run, not a finished saleable product.
+- /api/agents/status and /api/agents/runs expose coordination state.
+- /api/workers/status reports role configuration to the owner without exposing credentials.
+- /api/worker/next and /api/worker/runs/:id/tasks/:step/complete use scoped worker bearer tokens, never the owner password.
+- /api/autonomy/policy and /api/budget/policy distinguish standing authorization from technical execution.
+- /api/budget, /api/ledger and /api/revenue provide recorded accounting information; records are not independently reconciled profit.
+
+Global Pause blocks worker assignments and completions. Recording owner tasks and preparing internal coordination records does not invoke AI or external services. Existing provider-billing and ledger verification locks remain in force.
+
+## Current boundaries
+
+Routine pricing, publication and reversible deployment have standing owner authorization under ../AUTONOMOUS-MANDATE.md; recurring daily approval is not required. The Payhip uploader, model adapters, independent artifact verification, restricted funding and provider billing controls still need implementation/configuration. External execution is not switched on by creating worker identities.
+
+Use ../BUDGET-POLICY.md as the authoritative spending policy. The current startup enforcement cap is $100/month; growth candidates require verified profits and restricted funding. Children's cartoons remain deferred until verified residual income reaches $1,000/month. This milestone does not increase the budget.
+
+CI runs backend syntax and tests for backend changes. Unit and local HTTP checks do not establish live database concurrency, deployed credential configuration, actual model execution or successful storefront publication.

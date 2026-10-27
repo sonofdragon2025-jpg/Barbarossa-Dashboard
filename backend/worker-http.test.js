@@ -1,0 +1,33 @@
+'use strict';
+const {test}=require('node:test'), assert=require('node:assert/strict');
+const {spawn}=require('node:child_process'), {once}=require('node:events');
+const fs=require('node:fs/promises'), os=require('node:os'), path=require('node:path'), net=require('node:net'), crypto=require('node:crypto');
+test('HTTP worker credentials cannot access owner APIs or bypass pause',async t=>{
+ const probe=net.createServer();probe.listen(0,'127.0.0.1');await once(probe,'listening');const port=probe.address().port;await new Promise(resolve=>probe.close(resolve));
+ const temp=await fs.mkdtemp(path.join(os.tmpdir(),'barbarossa-worker-http-'));
+ const password=crypto.randomBytes(24).toString('hex'), token=crypto.randomBytes(32).toString('hex');
+ const tokenSha256=crypto.createHash('sha256').update(token).digest('hex');
+ const child=spawn(process.execPath,[path.join(__dirname,'server.js')],{env:{...process.env,PORT:String(port),DATABASE_URL:'',PAYHIP_API_KEY:'',DATA_FILE:path.join(temp,'state.json'),BARBAROSSA_OWNER_PASSWORD:password,BARBAROSSA_WORKERS_JSON:JSON.stringify([{id:'test-researcher',tokenSha256,steps:['research']}])},stdio:['ignore','pipe','pipe']});
+ t.after(async()=>{if(child.exitCode===null){child.kill();await once(child,'exit');}await fs.rm(temp,{recursive:true,force:true});});
+ await new Promise((resolve,reject)=>{
+   const timer=setTimeout(()=>reject(Error('Test server did not start')),10000);
+   child.stdout.once('data',()=>{clearTimeout(timer);resolve();});
+   child.once('error',e=>{clearTimeout(timer);reject(e);});
+   child.once('exit',code=>{clearTimeout(timer);reject(Error('Test server exited '+code));});
+ });
+ const base='http://127.0.0.1:'+port, bearer={Authorization:'Bearer '+token};
+ const call=(url,options={})=>fetch(base+url,options);
+ const health=await call('/health');assert.equal(health.status,200);assert.equal((await health.json()).workerApiVersion,1);
+ assert.equal((await call('/api/worker/next',{method:'POST'})).status,401);
+ assert.equal((await call('/api/worker/next',{method:'POST',headers:bearer})).status,503);
+ assert.equal((await call('/api/status',{headers:bearer})).status,401);
+ assert.equal((await call('/api/tasks',{method:'POST',headers:bearer})).status,401);
+ const login=await call('/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password})});
+ assert.equal(login.status,200);const csrf=(await login.json()).csrf, cookie=login.headers.get('set-cookie').split(';')[0];
+ const ownerHeaders={Cookie:cookie};
+ const result=await call('/api/workers/status',{headers:ownerHeaders});assert.equal(result.status,200);
+ const status=await result.json();assert.equal(status.configuredWorkers,1);assert.equal(status.globalPause,true);assert.equal(status.automaticExecutionEnabled,false);
+ assert.equal(JSON.stringify(status).includes(tokenSha256),false);
+ assert.equal((await call('/api/pause',{method:'POST',headers:{...ownerHeaders,'Content-Type':'application/json'},body:'{"paused":false}'})).status,403);
+ assert.equal((await call('/api/pause',{method:'POST',headers:{...ownerHeaders,'Content-Type':'application/json','X-CSRF-Token':csrf},body:'{"paused":false}'})).status,409);
+});

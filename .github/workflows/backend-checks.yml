@@ -1,0 +1,27 @@
+name: Backend checks
+on:
+  push:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-checks.yml'
+  pull_request:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-checks.yml'
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --ignore-scripts --no-audit --no-fund
+        working-directory: backend
+      - run: npm run check
+        working-directory: backend
+      - run: npm test
+        working-directory: backend
