@@ -1,0 +1,33 @@
+{
+  "version": "2026-10-27",
+  "ownerAuthorized": true,
+  "routineApprovalRequired": false,
+  "scope": "Research online demand, select cleared sources, create original edited clips, and publish through verified accounts",
+  "executionEnabled": false,
+  "requiredGates": [
+    "documented-commercial-reuse-rights-for-all-assets",
+    "source-license-conditions-satisfied",
+    "original-narration-or-substantive-commentary",
+    "independent-content-and-render-review",
+    "platform-specific-monetization-and-disclosure-checks",
+    "verified-destination-account",
+    "supported-authenticated-publisher",
+    "aggregate-budget-and-runway-check",
+    "durable-idempotent-publication-record"
+  ],
+  "unclearedSourceAction": "skip-and-select-another-source",
+  "fairUseOnlySourcesAutoPublish": false,
+  "budgetPolicy": "BUDGET-POLICY.md",
+  "sharedOperatingAllowance": true,
+  "sourceRanking": "Demand and audience fit among commercially cleared sources; view count is not proof of reuse rights",
+  "blockers": [
+    "No connected video publishing destination verified",
+    "No authenticated clip rendering and publishing workers configured",
+    "Independent rights and content checks not configured"
+  ],
+  "successEvidence": [
+    "confirmed-public-post-id-and-url",
+    "correct-final-media-matches-reviewed-artifact"
+  ],
+  "monetizationVerified": false
+}

@@ -46,3 +46,7 @@ Pause only the affected activity, record the reason and continue other permitted
 ## Actual technical state
 
 Source code now exposes standing authority, a 30-day runway ceiling calculator, experiment-review decisions and a release-ready coordination state. The daily product automation has separate instructions and must be updated consistently. Model workers, scoped worker identities, continuous execution, independent artifact inspection, supported storefront upload, verified financial reconciliation, atomic spending reservations and restricted payment/wallet adapters remain prerequisites. All external-execution flags remain disabled. This mandate does not turn ChatGPT into an always-running process or guarantee revenue.
+
+## Online-source clips authorization
+
+Owner update, 2026-10-27: Researching online sources, producing original clips and publishing through verified business accounts are routine autonomous activities with no daily approval. CLIP-WORKFLOW.md and backend/clip-policy.json define automatic rights/quality checks, source-skipping rules, publication evidence and technical blockers. No financial limits are changed and no external executor is activated by this authorization.

@@ -32,6 +32,6 @@ function evaluateExperiment(input) {
   return {decision:netProfitCents>0?'prioritize-within-existing-allowance':'pause-new-spend',netProfitCents};
 }
 function readiness() {
-  return {policy,executionEnabled:false,reason:'Standing authority recorded; model workers, independent quality checks, publishing adapter and verified financial controls remain unconfigured'};
+  return {policy,clipWorkflow:require('./clip-policy.json'),executionEnabled:false,reason:'Standing authority recorded; model workers, independent quality checks, publishing adapter and verified financial controls remain unconfigured'};
 }
 module.exports={policy,authority,availableGrowthCents,evaluateExperiment,readiness};
