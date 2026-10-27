@@ -13,6 +13,7 @@ const budgetPolicy=require('./budget-policy');
 const agentCoordinator=require('./agent-coordinator');
 const autonomyPolicy=require('./autonomy-policy');
 const workerAccess=require('./worker-access');
+const setupStatus=require('./setup-status');
 const workerRegistry=workerAccess.registryFrom(process.env.BARBAROSSA_WORKERS_JSON||'');
 const workerRateWindows=new Map();
 const wordGuide=require('./word-guide');
@@ -65,6 +66,10 @@ check();
 const server=http.createServer(async(req,res)=>{
  const u=new URL(req.url,'http://localhost').pathname,method=req.method,ip=req.headers['x-forwarded-for']?.split(',')[0]||req.socket.remoteAddress||'unknown';
  if(u==='/health'&&method==='GET')return json(res,storageReady?200:503,{status:storageReady?'ok':'storage-unavailable',phase:2,externalActionsEnabled:false,taskManagement:'password-session',workerApiVersion:1,build:process.env.RENDER_GIT_COMMIT||'unknown'},{'Access-Control-Allow-Origin':'https://barbarossa-dashboard.onrender.com','Vary':'Origin'});
+ if(u==='/api/setup/status'){
+  if(method!=='GET'||!setupStatus.authorized(process.env,req.headers.authorization))return json(res,404,{error:'Not found'});
+  return json(res,200,setupStatus.report(process.env,{storageReady,databaseConfigured,workerCount:workerRegistry.length,paused:state.paused}));
+ }
  if((u==='/'||u==='/login')&&method==='GET')return html(res,page);
  if(!storageReady)return json(res,503,{error:'Storage unavailable; all changes blocked'});
  if(u==='/webhooks/payhip'&&method==='POST'){if(!databaseConfigured||!storageReady||!PAYHIP_API_KEY)return json(res,503,{error:'Webhook not configured'});try{const b=await read(req);const result=await payhipWebhook.ingest(pool,b,PAYHIP_API_KEY);return json(res,result.status,{ok:result.status===200,recorded:!!result.recorded,duplicate:!!result.duplicate,error:result.error});}catch(e){console.error('Payhip webhook failed:',e.message);return json(res,503,{error:'Webhook processing unavailable'});}}
