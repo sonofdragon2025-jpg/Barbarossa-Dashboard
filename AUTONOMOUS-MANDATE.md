@@ -50,3 +50,7 @@ Source code now exposes standing authority, a 30-day runway ceiling calculator, 
 ## Online-source clips authorization
 
 Owner update, 2026-10-27: Researching online sources, producing original clips and publishing through verified business accounts are routine autonomous activities with no daily approval. CLIP-WORKFLOW.md and backend/clip-policy.json define automatic rights/quality checks, source-skipping rules, publication evidence and technical blockers. No financial limits are changed and no external executor is activated by this authorization.
+
+## Cartoon production deferred
+
+Owner instruction, 2026-10-27: Hold off on creating children's cartoons until Barbarossa reaches verified residual income of at least $1,000 per month. Do not create episodes, commission cartoon assets, establish a cartoon channel or spend on cartoon production before that milestone. Use reconciled residual-income evidence; gross sales, pending payouts, forecasts, one-off windfalls and owner funding do not establish it. Missing evidence keeps the activity deferred. This is a production eligibility milestone, not a change to BUDGET-POLICY.md or a waiver of existing account, quality, reserve or funding controls. Continue existing maintenance-product work.
