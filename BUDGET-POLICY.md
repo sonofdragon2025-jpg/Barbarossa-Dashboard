@@ -19,6 +19,17 @@ Owner-authorized replacement policy, 2026-10-27. This supersedes the earlier thr
 - Agents cannot change their own budget or permissions. Financial trading, lending, personal transfers, and commitments exceeding present funded capacity are outside this authorization.
 - An audit trail, atomic idempotent spending reservations, refund handling, provider-side limits, restricted funding and a working emergency pause must be tested before unattended spending is enabled.
 
+## Standing authorization for profit sharing
+
+Owner update, 2026-10-27: Barbarossa may negotiate and enter bounded profit-sharing collaboration arrangements without obtaining approval for each deal, provided the maximum payable obligation fits inside the remaining authorized reinvestment allowance. The existing allowance remains 25% of the previous completed month's verified positive net profit after the $500 qualification trigger; this is not 25% of gross sales and not an additional allowance for each partner.
+
+- All collaborator payouts, including any amounts withheld or routed directly from customer receipts, count together with hosting, AI, subscriptions and other operating costs toward the same monthly cap. Reserve each deal's maximum payable amount before commitment, including unsettled payouts; reject a deal if its liability cannot be bounded.
+- Terms must state scope, deliverables, payment formula, maximum payout, due dates and how refunds or chargebacks affect payment. Verify the counterparty/payment recipient before payment and log the terms and results.
+- No deal may create debt, guaranteed future minimums, an uncapped profit share, equity or ownership rights, or obligations beyond funded and reserved capacity. Continuing arrangements must allow work to pause before new obligations accrue when the allowance runs out or falls.
+- Do not fund profit-sharing from the existing PayPal balance, linked personal accounts or anticipated future earnings. Use only the separate restricted business spending integration once verified. The current startup cap remains $100; this new 25% profit-sharing authority does not activate before the profit trigger and funding controls are satisfied.
+- This standing authorization supersedes the prior requirement to seek owner approval for every profit-sharing arrangement within these bounds. Outside-budget arrangements, changes to the allowance and ownership/equity commitments remain outside this authorization.
+- This records owner authorization only. No partnership has been entered and no payouts, automatic contracting or transfers are technically enabled by this update.
+
 ## Implementation status
 
 The server exposes this authorized policy at authenticated GET /api/budget/policy. GET /api/revenue calculates informational candidates using owner-entered figures; it does not verify profits or change the active cap. Its record of historical $500 thresholds is informational until accounting reconciliation is implemented.
