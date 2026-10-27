@@ -6,12 +6,11 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check budget-policy.js",
-    "test": "node --test budget-policy.test.js"
+    "check": "node --check server.js && node --check budget-policy.js && node --check agent-coordinator.js",
+    "test": "node --test *.test.js"
   },
   "dependencies": {
     "pg": "^8.13.1",
     "docx": "^9.5.1"
   }
 }
-
