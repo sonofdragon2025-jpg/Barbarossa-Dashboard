@@ -23,7 +23,7 @@ test('handoffs retain evidence and allow parallel downstream work only after qua
   for(const id of ['listing','promotion','support'])assert.equal(r.tasks[id].status,'ready');
   assert.equal(r.tasks.performance.status,'waiting');
   for(const id of ['support','promotion','listing','performance'])r=done(r,id);
-  assert.equal(r.status,'awaiting-owner-review');assert.equal(r.events.length,9);
+  assert.equal(r.status,'ready-for-automated-release');assert.equal(r.events.length,9);
   assert.equal(r.tasks.research.output.sources.length,1);
   assert.equal(c.status().automaticPublishingEnabled,false);
 });

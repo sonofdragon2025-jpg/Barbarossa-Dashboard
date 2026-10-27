@@ -16,7 +16,7 @@ Owner-authorized replacement policy, 2026-10-27. This supersedes the earlier thr
 - Existing PayPal is intended for customer receipts. Agent withdrawals, transfers, purchases, and access to linked personal funding sources are forbidden. This repository does not verify PayPal receipt setup or provide payment credentials.
 - Establish a separate restricted business spending account/card after revenue begins. It must have no overdraft, credit, or fallback access to personal balances. Fund it only with an eligible allowance through an independently controlled transfer process.
 - Owner grants standing authorization for routine business growth purchases within this allowance, once enforcement is verified. Repeated approval for each permitted purchase is not required. All operating costs count toward the aggregate cap.
-- Agents cannot change their own budget or permissions. Financial trading, lending, personal transfers, and commitments exceeding present funded capacity are outside this authorization.
+- Agents cannot change their own budget or permissions. Lending, personal transfers, and commitments exceeding present funded capacity are outside this authorization. The later AUTONOMOUS-MANDATE.md authorizes trading in principle only within a separately configured risk envelope; the current live trading capital limit remains zero.
 - An audit trail, atomic idempotent spending reservations, refund handling, provider-side limits, restricted funding and a working emergency pause must be tested before unattended spending is enabled.
 
 ## Standing authorization for profit sharing
@@ -37,3 +37,8 @@ Profit-sharing-specific restriction (owner clarification, 2026-10-27): no profit
 The server exposes this authorized policy at authenticated GET /api/budget/policy. GET /api/revenue calculates informational candidates using owner-entered figures; it does not verify profits or change the active cap. Its record of historical $500 thresholds is informational until accounting reconciliation is implemented.
 
 Active database enforcement remains $100/month. Global Pause remains locked ON and external paid operations remain disabled. There is no payment executor, PayPal withdrawal integration, verified profit importer, or restricted spending account configured by this change. Automatic activation and autonomous purchases require those missing integrations; editing policy must not bypass the existing safety locks.
+
+
+## Autonomous operating mandate, 2026-10-27
+
+AUTONOMOUS-MANDATE.md removes repeated owner approval for routine publishing, pricing, deployment and permitted business activity. It does not alter any budget amount, profit trigger, restricted-funding requirement or profit-sharing limitation above. Maintain 30 days of projected compute costs before discretionary growth spending. This reserve is protected cash, not an additional allowance. No financial executor is activated by the mandate.

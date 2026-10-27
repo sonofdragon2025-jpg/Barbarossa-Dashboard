@@ -2,6 +2,7 @@
 // Coordination only: this module has no model, network, payment or shell executor.
 const crypto = require('node:crypto');
 const {policy: budgetPolicy} = require('./budget-policy');
+const autonomyPolicy = require('./autonomy-policy');
 const STEPS = [
   ['research', 'researcher', []],
   ['design', 'product-designer', ['research']],
@@ -55,7 +56,7 @@ function refresh(run) {
     if (task.status === 'complete') continue;
     task.status = task.dependencies.every(id => run.tasks[id].status === 'complete') ? 'ready' : 'waiting';
   }
-  if (run.status !== 'needs-owner-intervention') run.status = Object.values(run.tasks).every(t => t.status === 'complete') ? 'awaiting-owner-review' : 'awaiting-worker-integration';
+  if (run.status !== 'needs-owner-intervention') run.status = Object.values(run.tasks).every(t => t.status === 'complete') ? 'ready-for-automated-release' : 'awaiting-worker-integration';
 }
 function createRun({requestKey, goal}) {
   if (!text(requestKey, 100) || !/^[a-zA-Z0-9:_-]+$/.test(requestKey) || !text(goal, 500)) fail('Invalid request key or goal');
@@ -89,6 +90,7 @@ function completeTask(current, step, {expectedVersion, output}) {
 function status() {
   return {
     mode: 'coordination-only', coordinatorImplemented: true, autonomousWorkersEnabled: false,
+    autonomy: autonomyPolicy.readiness(), publicationRequiresOwnerApproval: false,
     roles: STEPS.map(([step, role, dependencies]) => ({step, role, dependencies})),
     externalActionsEnabled: false, automaticPublishingEnabled: false, paymentsEnabled: false,
     externalHiringEnabled: false, walletEnabled: false, tokenizationEnabled: false,
