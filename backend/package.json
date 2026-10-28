@@ -6,11 +6,13 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check budget-policy.js && node --check agent-coordinator.js && node --check autonomy-policy.js && node --check worker-access.js",
+    "check": "node --check server.js && node --check budget-policy.js && node --check agent-coordinator.js && node --check autonomy-policy.js && node --check worker-access.js && node --check execution-ledger.js && node --check model-adapter.js && node --check product-artifacts.js && node --check payhip-uploader.js && node --check commerce-runtime.js",
     "test": "node --test *.test.js"
   },
   "dependencies": {
     "pg": "^8.13.1",
-    "docx": "^9.5.1"
+    "docx": "^9.5.1",
+    "playwright-core": "^1.56.0",
+    "jszip": "^3.10.1"
   }
 }

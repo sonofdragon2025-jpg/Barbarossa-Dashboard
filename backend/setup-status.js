@@ -12,7 +12,7 @@ function report(env, runtime) {
  return {
   database:{configured:present('DATABASE_URL'),initialized:runtime.storageReady&&runtime.databaseConfigured},
   ownerLoginConfigured:present('BARBAROSSA_OWNER_PASSWORD'),
-  models:{openaiKeyConfigured:present('OPENAI_API_KEY'),anthropicKeyConfigured:present('ANTHROPIC_API_KEY'),adapterImplemented:false},
+  models:{openaiKeyConfigured:present('OPENAI_API_KEY'),anthropicKeyConfigured:present('ANTHROPIC_API_KEY'),adapterImplemented:true},
   workers:{configuredCount:runtime.workerCount,modelWorkersRunning:false},
   payhip:{webhookKeyConfigured:present('PAYHIP_API_KEY'),uploaderImplemented:false,automaticPublishingOperational:false},
   controls:{globalPause:runtime.paused,providerBillingVerified:false,externalExecutionEnabled:false},

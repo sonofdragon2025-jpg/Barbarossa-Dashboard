@@ -21,11 +21,13 @@ test('HTTP worker credentials cannot access owner APIs or bypass pause',async t=
  assert.equal((await call('/api/worker/next',{method:'POST'})).status,401);
  assert.equal((await call('/api/worker/next',{method:'POST',headers:bearer})).status,503);
  assert.equal((await call('/api/status',{headers:bearer})).status,401);
+ assert.equal((await call('/api/runtime/status',{headers:bearer})).status,401);
  assert.equal((await call('/api/tasks',{method:'POST',headers:bearer})).status,401);
  const login=await call('/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password})});
  assert.equal(login.status,200);const csrf=(await login.json()).csrf, cookie=login.headers.get('set-cookie').split(';')[0];
  const ownerHeaders={Cookie:cookie};
  const result=await call('/api/workers/status',{headers:ownerHeaders});assert.equal(result.status,200);
+ const readiness=await call('/api/runtime/status',{headers:ownerHeaders});assert.equal(readiness.status,200);const readinessData=await readiness.json();assert.equal(readinessData.executorImplemented,true);assert.equal(readinessData.automaticExecutionEnabled,false);assert.equal(readinessData.automaticPublishingEnabled,false);
  const status=await result.json();assert.equal(status.configuredWorkers,1);assert.equal(status.globalPause,true);assert.equal(status.automaticExecutionEnabled,false);
  assert.equal(JSON.stringify(status).includes(tokenSha256),false);
  assert.equal((await call('/api/pause',{method:'POST',headers:{...ownerHeaders,'Content-Type':'application/json'},body:'{"paused":false}'})).status,403);
