@@ -1,0 +1,19 @@
+{
+  "id": "/",
+  "name": "Barbarossa — Hiott Holding LLC",
+  "short_name": "Barbarossa",
+  "description": "Private Barbarossa operations dashboard",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0c1423",
+  "theme_color": "#101827",
+  "icons": [
+    {
+      "src": "/icons/barbarossa.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
