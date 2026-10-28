@@ -70,7 +70,7 @@ const server=http.createServer(async(req,res)=>{
  if(u==='/health'&&method==='GET')return json(res,storageReady?200:503,{status:storageReady?'ok':'storage-unavailable',phase:2,externalActionsEnabled:false,taskManagement:'password-session',workerApiVersion:1,runtimeApiVersion:1,build:process.env.RENDER_GIT_COMMIT||'unknown'},{'Access-Control-Allow-Origin':'https://barbarossa-dashboard.onrender.com','Vary':'Origin'});
  if(u==='/api/setup/status'){
   if(method!=='GET'||!setupStatus.authorized(process.env,req.headers.authorization))return json(res,404,{error:'Not found'});
-  return json(res,200,setupStatus.report(process.env,{storageReady,databaseConfigured,workerCount:workerRegistry.length,paused:state.paused}));
+  return json(res,200,{...setupStatus.report(process.env,{storageReady,databaseConfigured,workerCount:workerRegistry.length,paused:state.paused}),preflight:await setupStatus.preflight(process.env),runtime:commerceRuntime.readiness(process.env,runtimeControls())});
  }
  if((u==='/'||u==='/login')&&method==='GET')return html(res,page);
  if(!storageReady)return json(res,503,{error:'Storage unavailable; all changes blocked'});

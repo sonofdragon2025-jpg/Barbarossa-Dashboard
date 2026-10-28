@@ -14,9 +14,21 @@ function report(env, runtime) {
   ownerLoginConfigured:present('BARBAROSSA_OWNER_PASSWORD'),
   models:{openaiKeyConfigured:present('OPENAI_API_KEY'),anthropicKeyConfigured:present('ANTHROPIC_API_KEY'),adapterImplemented:true},
   workers:{configuredCount:runtime.workerCount,modelWorkersRunning:false},
-  payhip:{webhookKeyConfigured:present('PAYHIP_API_KEY'),uploaderImplemented:false,automaticPublishingOperational:false},
+  payhip:{webhookKeyConfigured:present('PAYHIP_API_KEY'),browserKeyConfigured:present('TINYFISH_API_KEY'),profileIdConfigured:/^prof_[a-f0-9]+$/.test(env.PAYHIP_PROFILE_ID||''),uploaderImplemented:false,automaticPublishingOperational:false},
   controls:{globalPause:runtime.paused,providerBillingVerified:false,externalExecutionEnabled:false},
   credentialsIncluded:false
  };
 }
-module.exports={authorized,report};
+async function preflight(env,{fetchImpl=fetch}={}) {
+ const result={readOnly:true,inferenceExecuted:false,browserSessionCreated:false};
+ async function status(url,headers){
+  try{const r=await fetchImpl(url,{method:'GET',headers,redirect:'error',signal:AbortSignal.timeout(12000)});if(r.body)await r.body.cancel().catch(()=>{});return {accessible:r.status===200,httpStatus:r.status};}
+  catch{return {accessible:false,httpStatus:null,reason:'network-or-provider-unavailable'};}
+ }
+ if(env.TINYFISH_API_KEY&&/^prof_[a-f0-9]+$/.test(env.PAYHIP_PROFILE_ID||''))result.payhipProfile=await status('https://agent.tinyfish.ai/v1/profiles/'+env.PAYHIP_PROFILE_ID,{'X-API-Key':env.TINYFISH_API_KEY});
+ else result.payhipProfile={accessible:false,reason:'runtime-key-or-profile-id-missing'};
+ if(env.OPENAI_API_KEY)result.model=await status('https://api.openai.com/v1/models/'+require('./model-adapter').MODEL,{Authorization:'Bearer '+env.OPENAI_API_KEY});
+ else result.model={accessible:false,reason:'runtime-key-missing'};
+ return result;
+}
+module.exports={authorized,report,preflight};
