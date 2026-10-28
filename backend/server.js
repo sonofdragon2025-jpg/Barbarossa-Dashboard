@@ -73,6 +73,7 @@ const server=http.createServer(async(req,res)=>{
   return json(res,200,{...setupStatus.report(process.env,{storageReady,databaseConfigured,workerCount:workerRegistry.length,paused:state.paused}),preflight:await setupStatus.preflight(process.env),runtime:commerceRuntime.readiness(process.env,runtimeControls())});
  }
  if((u==='/'||u==='/login')&&method==='GET')return html(res,page);
+ if(u==='/chat'&&method==='GET')return html(res,fs.readFileSync(path.join(__dirname,'chat-page.html'),'utf8'));
  if(!storageReady)return json(res,503,{error:'Storage unavailable; all changes blocked'});
  if(u==='/webhooks/payhip'&&method==='POST'){if(!databaseConfigured||!storageReady||!PAYHIP_API_KEY)return json(res,503,{error:'Webhook not configured'});try{const b=await read(req);const result=await payhipWebhook.ingest(pool,b,PAYHIP_API_KEY);return json(res,result.status,{ok:result.status===200,recorded:!!result.recorded,duplicate:!!result.duplicate,error:result.error});}catch(e){console.error('Payhip webhook failed:',e.message);return json(res,503,{error:'Webhook processing unavailable'});}}
   if(!originOK(req))return json(res,403,{error:'Origin not allowed'});
@@ -104,6 +105,7 @@ const server=http.createServer(async(req,res)=>{
   }
   const s=session(req);if(!s)return json(res,401,{error:'Sign in required'});
   if(u==='/auth/session'&&method==='GET')return json(res,200,{csrf:s.csrf});
+  if(u==='/api/chat/status'&&method==='GET')return json(res,200,{chatInterfaceInstalled:true,chatEnabled:false,reason:'AI responses remain disabled until provider billing limits, durable ledger, and owner-approved spending controls are verified. No AI request has been made.'});
   if(method!=='GET'&&!csrfOK(req,s))return json(res,403,{error:'Invalid CSRF token'});
   if(u==='/auth/logout'&&method==='POST'){sessions.delete(cookie(req));return json(res,200,{ok:true},{'Set-Cookie':'barbarossa_session=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0'});}
   if(u==='/api/runtime/status'&&method==='GET')return json(res,200,{...commerceRuntime.readiness(process.env,runtimeControls()),schedulerRegistered:databaseConfigured&&storageReady,globalPause:state.paused});
