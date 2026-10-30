@@ -1,5 +1,6 @@
 'use strict';
 const crypto=require('node:crypto');
+const {attachReviewedFiles}=require('./payhip-file-transfer');
 const STORE='https://payhip.com/HiottHoldingLLC';
 const PRODUCTS='https://payhip.com/products';
 const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
@@ -50,10 +51,7 @@ async function perform(page,p,{beforeCommit,beforePublish,afterCreate,verifyDown
  await (await one(page.getByRole('button',{name:/^add new product$/i}))).click();
  await (await one(page.getByText('Digital Product',{exact:true}))).click();await guard(page);
  const upload=page.getByRole('button',{name:/^upload product file$/i});
- const chooserPromise=page.waitForEvent('filechooser',{timeout:10000});await (await one(upload)).click();
- const chooser=await chooserPromise;
- await chooser.setFiles(p.files.map(f=>({name:f.name,mimeType:f.mime,buffer:f.buffer})));
- for(const f of p.files)await page.getByText(f.name,{exact:true}).waitFor({state:'visible',timeout:60000});
+ await attachReviewedFiles(page,await one(upload),p.files);
  await (await one(page.getByLabel(/^title$/i))).fill(p.title);
  await (await one(page.getByLabel(/^price/i))).fill((p.priceCents/100).toFixed(2));
  await (await one(page.getByLabel(/^description$/i))).fill(p.description);
