@@ -132,7 +132,7 @@ const server=http.createServer(async(req,res)=>{
      const doc=new Document({sections:[{children:[new Paragraph('Hiott Holding LLC'),new Paragraph(sample)]}]});
      const buffer=await Packer.toBuffer(doc);
      const result=await renderCheck([{name:'guide.docx',buffer,sha256:sha(buffer)}]);
-     rendering={passed:result.rendered,sourceIntegrityVerified:true,pdfGenerated:Boolean(result.pdfSha256),extractedWords:result.text.trim().split(/\\s+/).length};
+     rendering={passed:result.rendered,sourceIntegrityVerified:true,pdfGenerated:Boolean(result.pdfSha256),extractedWords:result.text.trim().split(/\s+/).length};
     }catch(e){rendering={passed:false,error:String(e.message||e).slice(0,240)};}
    }
    const passed=checks.libreoffice.installed&&checks.pdftotext.installed&&rendering.passed;
