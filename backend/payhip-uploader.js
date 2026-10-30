@@ -33,7 +33,7 @@ async function verifyDownloads(page,files){
   if(sha(Buffer.concat(chunks))!==f.sha256)throw Error('Payhip download does not match reviewed customer file');
  }
 }
-async function perform(page,p,{beforeCommit,beforePublish,afterCreate,verifyDownloads,uiContractVerified=false}={}){
+async function perform(page,p,{beforeCommit,beforePublish,afterCreate,verifyDownloads,uiContractVerified=false,publishVisible=false}={}){
  validateRelease(p);
  // This UI mapping is deliberately not production-activated by the model or
  // an environment switch. Inspect the real seller form and run a controlled
@@ -67,6 +67,7 @@ async function perform(page,p,{beforeCommit,beforePublish,afterCreate,verifyDown
  // Verification must download files through the seller UI and compare hashes;
  // visible filenames alone do not establish correct customer delivery.
  await verifyDownloads(page,p.files);
+ if(publishVisible!==true)return {url:link,published:false,hiddenDraft:true,downloadsVerified:true,artifactsDigest:p.quality.artifactsDigest};
  await beforePublish();
  await (await one(page.getByLabel('Visible',{exact:true}))).check();
  await (await one(page.getByRole('button',{name:/^save changes$/i}))).click();
