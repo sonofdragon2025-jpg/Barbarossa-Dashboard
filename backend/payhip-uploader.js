@@ -33,12 +33,12 @@ async function verifyDownloads(page,files){
   if(sha(Buffer.concat(chunks))!==f.sha256)throw Error('Payhip download does not match reviewed customer file');
  }
 }
-async function perform(page,p,{beforeCommit,beforePublish,afterCreate,verifyDownloads,uiContractVerified=false}={}){
+async function perform(page,p,{beforeCommit,afterCreate,verifyDownloads,uiContractVerified=false}={}){
  validateRelease(p);
  // This UI mapping is deliberately not production-activated by the model or
  // an environment switch. Inspect the real seller form and run a controlled
  // upload/download test before supplying this verified adapter capability.
- if(uiContractVerified!==true||typeof verifyDownloads!=='function'||typeof beforeCommit!=='function'||typeof beforePublish!=='function'||typeof afterCreate!=='function')throw Error('Payhip UI contract, durable checkpoints and downloaded-file verification must be verified before upload');
+ if(uiContractVerified!==true||typeof verifyDownloads!=='function'||typeof beforeCommit!=='function'||typeof afterCreate!=='function')throw Error('Payhip UI contract, durable checkpoints and downloaded-file verification must be verified before upload');
  await page.goto(PRODUCTS,{waitUntil:'domcontentloaded',timeout:30000});await guard(page);
  // An account name alone is insufficient: require this exact store link.
  const storeLink=page.locator('a').filter({hasText:/view (?:your )?store/i});
@@ -67,16 +67,8 @@ async function perform(page,p,{beforeCommit,beforePublish,afterCreate,verifyDown
  // Verification must download files through the seller UI and compare hashes;
  // visible filenames alone do not establish correct customer delivery.
  await verifyDownloads(page,p.files);
- await beforePublish();
- await (await one(page.getByLabel('Visible',{exact:true}))).check();
- await (await one(page.getByRole('button',{name:/^save changes$/i}))).click();
- const publicPage=await page.context().newPage();
- try{
-  await publicPage.goto(link,{waitUntil:'domcontentloaded',timeout:30000});await guard(publicPage);
-  const text=await publicPage.locator('body').innerText();
-  if(!text.includes(p.title)||!text.includes((p.priceCents/100).toFixed(2)))throw Error('Public title or price verification failed');
- }finally{await publicPage.close();}
- return {url:link,published:true,artifactsDigest:p.quality.artifactsDigest};
+ return {url:link,published:false,visibility:'invisible',artifactsDigest:p.quality.artifactsDigest,requiresOwnerApproval:true};
+
 }
 async function connectProfile(env,{fetchImpl=fetch,chromium}={}){
  if(!env.TINYFISH_API_KEY||!/^prof_[a-f0-9]+$/.test(env.PAYHIP_PROFILE_ID||''))throw Error('TinyFish runtime credential and verified Payhip profile ID required');
