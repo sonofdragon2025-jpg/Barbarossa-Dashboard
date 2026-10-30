@@ -111,6 +111,33 @@ const server=http.createServer(async(req,res)=>{
   if(u==='/api/chat/status'&&method==='GET')return json(res,200,{chatInterfaceInstalled:true,chatEnabled:false,...chatTestPolicy.readiness(),reason:'$5 testing allowance configured. Paid chat calls remain blocked pending atomic spending enforcement and testing.'});
   if(method!=='GET'&&!csrfOK(req,s))return json(res,403,{error:'Invalid CSRF token'});
   if(u==='/auth/logout'&&method==='POST'){sessions.delete(cookie(req));return json(res,200,{ok:true},{'Set-Cookie':'barbarossa_session=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0'});}
+  if(u==='/api/diagnostics/render'&&method==='GET'){
+   // Owner-session protected, read-only diagnostic. No API keys, uploads, billing, or publishing.
+   const {execFile}=require('node:child_process');
+   const {promisify}=require('node:util');
+   const run=promisify(execFile);
+   const soffice=process.env.SOFFICE_PATH||'/usr/bin/libreoffice';
+   const pdftotext=process.env.PDFTOTEXT_PATH||'/usr/bin/pdftotext';
+   const checks={};
+   for(const [name,bin,args] of [['libreoffice',soffice,['--version']],['pdftotext',pdftotext,['-v']]]){
+    try{const result=await run(bin,args,{timeout:10000,maxBuffer:4096});checks[name]={installed:true,version:(result.stdout||result.stderr).trim().slice(0,160)};}
+    catch(e){checks[name]={installed:false,error:e.code||'execution-failed'};}
+   }
+   let rendering={passed:false};
+   if(checks.libreoffice.installed&&checks.pdftotext.installed){
+    try{
+     const {Document,Packer,Paragraph}=require('docx');
+     const {renderCheck,sha}=require('./product-artifacts');
+     const sample=Array.from({length:75},(_,i)=>'Diagnostic sample paragraph '+(i+1)+': safe maintenance inspection documentation and preventive maintenance workflow checks for Hiott Holding LLC.').join(' ');
+     const doc=new Document({sections:[{children:[new Paragraph('Hiott Holding LLC'),new Paragraph(sample)]}]});
+     const buffer=await Packer.toBuffer(doc);
+     const result=await renderCheck([{name:'guide.docx',buffer,sha256:sha(buffer)}]);
+     rendering={passed:result.rendered,sourceIntegrityVerified:true,pdfGenerated:Boolean(result.pdfSha256),extractedWords:result.text.trim().split(/\\s+/).length};
+    }catch(e){rendering={passed:false,error:String(e.message||e).slice(0,240)};}
+   }
+   const passed=checks.libreoffice.installed&&checks.pdftotext.installed&&rendering.passed;
+   return json(res,passed?200:503,{passed,checks,rendering,globalPause:state.paused,externalActionsExecuted:false,productsUploaded:0,productsPublished:0});
+  }
   if(u==='/api/runtime/status'&&method==='GET')return json(res,200,{...commerceRuntime.readiness(process.env,runtimeControls()),schedulerRegistered:databaseConfigured&&storageReady,globalPause:state.paused});
   if(u==='/api/runtime/jobs'&&method==='GET'){if(!databaseConfigured)return json(res,503,{error:'Transactional database required'});const jobs=await pool.query("SELECT run_id,day,status,data->>'blockerCode' AS blocker_code,updated_at FROM barbarossa_runtime_jobs ORDER BY day DESC LIMIT 60");return json(res,200,{jobs:jobs.rows});}
   if(u==='/api/workers/status'&&method==='GET')return json(res,200,{...workerAccess.status(workerRegistry),globalPause:state.paused});
