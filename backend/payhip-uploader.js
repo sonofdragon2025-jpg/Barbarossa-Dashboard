@@ -65,7 +65,12 @@ async function perform(page,p,{beforeCommit,beforePublish,afterCreate,verifyDown
  const invisible=page.getByText(/^Invisible\\s*[—-]\\s*Nobody except you can see this product$/i);
  await (await one(invisible)).click();
  const selected=page.getByRole('radio',{name:/^Invisible\\b/i});
- if(await selected.count()===1 && !(await selected.isChecked()))throw Error('Invisible visibility was not selected; product creation blocked');
+ const checkbox=page.getByRole('checkbox',{name:/^Invisible\\b/i});
+ if(await selected.count()===1){
+  if(!(await selected.isChecked()))throw Error('Invisible visibility was not selected; product creation blocked');
+ }else if(await checkbox.count()===1){
+  if(!(await checkbox.isChecked()))throw Error('Invisible visibility was not selected; product creation blocked');
+ }else throw Error('Invisible visibility state cannot be verified; product creation blocked');
  await beforeCommit(); // Durable checkpoint BEFORE the first product-creation click.
  await (await one(page.getByRole('button',{name:/^add product$/i}))).click();
  await page.waitForLoadState('domcontentloaded');await guard(page);
