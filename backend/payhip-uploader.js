@@ -50,29 +50,29 @@ async function perform(page,p,{beforeCommit,beforePublish,afterCreate,verifyDown
  if(await page.getByText(p.title,{exact:true}).count())throw Error('Product title already exists; reconcile before creating another');
  await (await one(page.getByRole('button',{name:/^add new product$/i}))).click();
  await (await one(page.getByText('Digital Product',{exact:true}))).click();await guard(page);
- // Payhip's file picker is a styled moxie-shim control; the visible trigger
- // opens a hidden input. Playwright must capture the actual filechooser event.
- const upload=page.getByText(/^\\+?\\s*Upload product file$/i);
+ // Use a unique hidden input when available; otherwise capture the filechooser.
+ // Never assume that clicking the styled button proves a file was attached.
+ const upload=page.getByText(/Upload product file/i);
  await attachReviewedFiles(page,await one(upload),p.files);
  // The form labels include explanatory suffixes, not bare Title/Price.
  await (await one(page.getByPlaceholder('Your product title...',{exact:true}))).fill(p.title);
- const price=page.getByRole('textbox',{name:/^Price\\b/i});
+ const price=page.getByRole('textbox',{name:/^Price\b/i});
  await (await one(price)).fill((p.priceCents/100).toFixed(2));
  // Payhip uses a Quill contenteditable editor rather than a textarea.
  const description=page.locator('.ql-editor[contenteditable="true"]');
  await (await one(description)).fill(p.description);
  // Visible is Payhip's default. Explicitly select Invisible and verify.
- const invisible=page.getByText(/^Invisible\\s*[—-]\\s*Nobody except you can see this product$/i);
+ const invisible=page.getByText(/Invisible.*Nobody except you can see this product/i);
  await (await one(invisible)).click();
- const selected=page.getByRole('radio',{name:/^Invisible\\b/i});
- const checkbox=page.getByRole('checkbox',{name:/^Invisible\\b/i});
+ const selected=page.getByRole('radio',{name:/^Invisible\b/i});
+ const checkbox=page.getByRole('checkbox',{name:/^Invisible\b/i});
  if(await selected.count()===1){
   if(!(await selected.isChecked()))throw Error('Invisible visibility was not selected; product creation blocked');
  }else if(await checkbox.count()===1){
   if(!(await checkbox.isChecked()))throw Error('Invisible visibility was not selected; product creation blocked');
  }else throw Error('Invisible visibility state cannot be verified; product creation blocked');
  await beforeCommit(); // Durable checkpoint BEFORE the first product-creation click.
- await (await one(page.getByRole('button',{name:/^add product$/i}))).click();
+ await (await one(page.locator('input[type="button"][value="Add Product"]'))).click();
  await page.waitForLoadState('domcontentloaded');await guard(page);
  const link=await (await one(page.locator('a[href^="https://payhip.com/b/"]'))).getAttribute('href');
  if(!/^https:\/\/payhip\.com\/b\/[a-zA-Z0-9]+$/.test(link))throw Error('Missing product identifier after creation');
