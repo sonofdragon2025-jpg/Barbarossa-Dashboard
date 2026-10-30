@@ -79,18 +79,14 @@ async function perform(page,p,{beforeCommit,beforePublish,afterCreate,verifyDown
  }finally{await publicPage.close();}
  return {url:link,published:true,artifactsDigest:p.quality.artifactsDigest};
 }
-async function connectProfile(env,{fetchImpl=fetch,chromium}={}){
- if(!env.TINYFISH_API_KEY||!/^prof_[a-f0-9]+$/.test(env.PAYHIP_PROFILE_ID||''))throw Error('TinyFish runtime credential and verified Payhip profile ID required');
- const profile=env.PAYHIP_PROFILE_ID;
- async function api(action,body){const r=await fetchImpl('https://agent.tinyfish.ai/v1/profiles/'+profile+'/'+action,{method:'POST',headers:{'X-API-Key':env.TINYFISH_API_KEY,'Content-Type':'application/json'},body:JSON.stringify(body),redirect:'error',signal:AbortSignal.timeout(60000)});if(!r.ok)throw Error('TinyFish profile operation failed (HTTP '+r.status+')');return r.status===204?null:r.json();}
- const session=await api('setup-session',{url:PRODUCTS,timeout_seconds:180});
- if(typeof session.cdp_url!=='string'||!session.cdp_url.startsWith('wss://')||typeof session.session_id!=='string')throw Error('Invalid remote browser session response');
- // Never emit CDP URLs: they authorize access to an authenticated browser.
- let browser;
- try{browser=await (chromium||require('playwright-core').chromium).connectOverCDP(session.cdp_url,{timeout:30000});}
- catch(e){await api('setup-session/cancel',{session_id:session.session_id}).catch(()=>{});throw Error('Remote authenticated browser connection failed');}
- const context=browser.contexts()[0];if(!context){try{await api('setup-session/cancel',{session_id:session.session_id});}finally{await browser.close();}throw Error('Remote browser context unavailable');}
- const page=context.pages()[0]||await context.newPage();
- return {page,close:async()=>{try{await api('setup-session/cancel',{session_id:session.session_id});}finally{await browser.close();}}};
+async function connectProfile(env){
+ // Fail closed: TinyFish /v1/profiles/{id}/setup-session is for profile
+ // enrollment, not a supported unattended session with saved login state.
+ // Direct Browser API sessions are isolated and do not establish Payhip auth.
+ // Use the supported profile-backed Agent API for read-only discovery;
+ // implement and test a verified authenticated file-upload transport separately.
+ if(!env.TINYFISH_API_KEY||!/^prof_[a-f0-9]+$/.test(env.PAYHIP_PROFILE_ID||''))
+  throw Error('TinyFish credential and Payhip browser profile required');
+ throw Error('Unattended Payhip CDP connection not verified: profile setup sessions cannot be used for uploads. No product was created.');
 }
 module.exports={STORE,validateRelease,guard,one,perform,connectProfile,verifyDownloads};
