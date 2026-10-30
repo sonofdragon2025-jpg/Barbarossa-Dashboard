@@ -50,13 +50,22 @@ async function perform(page,p,{beforeCommit,beforePublish,afterCreate,verifyDown
  if(await page.getByText(p.title,{exact:true}).count())throw Error('Product title already exists; reconcile before creating another');
  await (await one(page.getByRole('button',{name:/^add new product$/i}))).click();
  await (await one(page.getByText('Digital Product',{exact:true}))).click();await guard(page);
- const upload=page.getByRole('button',{name:/^upload product file$/i});
+ // Payhip's file picker is a styled moxie-shim control; the visible trigger
+ // opens a hidden input. Playwright must capture the actual filechooser event.
+ const upload=page.getByText(/^\\+?\\s*Upload product file$/i);
  await attachReviewedFiles(page,await one(upload),p.files);
- await (await one(page.getByLabel(/^title$/i))).fill(p.title);
- await (await one(page.getByLabel(/^price/i))).fill((p.priceCents/100).toFixed(2));
- await (await one(page.getByLabel(/^description$/i))).fill(p.description);
- // First persist an invisible draft. Verify uploaded bytes before visibility.
- await (await one(page.getByLabel('Invisible',{exact:true}))).check();
+ // The form labels include explanatory suffixes, not bare Title/Price.
+ await (await one(page.getByPlaceholder('Your product title...',{exact:true}))).fill(p.title);
+ const price=page.getByRole('textbox',{name:/^Price\\b/i});
+ await (await one(price)).fill((p.priceCents/100).toFixed(2));
+ // Payhip uses a Quill contenteditable editor rather than a textarea.
+ const description=page.locator('.ql-editor[contenteditable="true"]');
+ await (await one(description)).fill(p.description);
+ // Visible is Payhip's default. Explicitly select Invisible and verify.
+ const invisible=page.getByText(/^Invisible\\s*[—-]\\s*Nobody except you can see this product$/i);
+ await (await one(invisible)).click();
+ const selected=page.getByRole('radio',{name:/^Invisible\\b/i});
+ if(await selected.count()===1 && !(await selected.isChecked()))throw Error('Invisible visibility was not selected; product creation blocked');
  await beforeCommit(); // Durable checkpoint BEFORE the first product-creation click.
  await (await one(page.getByRole('button',{name:/^add product$/i}))).click();
  await page.waitForLoadState('domcontentloaded');await guard(page);
