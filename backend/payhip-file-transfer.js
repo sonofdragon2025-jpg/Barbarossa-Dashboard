@@ -15,7 +15,7 @@ function checkFiles(files){
 // Try a real file input first. Payhip may hide it behind a moxie-shim.
 // Only use an input within the upload section; never target the cover image.
 async function locateUploadInput(page){
- const section=page.locator('div').filter({hasText:/File\\(s\\) - upload your product files/});
+ const section=page.locator('div').filter({hasText:/File\(s\) - upload your product files/});
  const scoped=section.locator('input[type="file"]');
  if(await scoped.count()===1)return scoped;
  // Some versions inject a hidden input at document level. Use only when unique.
