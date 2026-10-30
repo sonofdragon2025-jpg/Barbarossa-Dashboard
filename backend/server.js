@@ -11,6 +11,7 @@ const payhipWebhook=require('./payhip-webhook');
 const productQueue=require('./product-queue');
 const budgetPolicy=require('./budget-policy');
 const chatTestPolicy=require('./chat-test-policy');
+const cfoGrowthPolicy=require('./cfo-growth-policy');
 const agentCoordinator=require('./agent-coordinator');
 const autonomyPolicy=require('./autonomy-policy');
 const workerAccess=require('./worker-access');
@@ -106,6 +107,7 @@ const server=http.createServer(async(req,res)=>{
   }
   const s=session(req);if(!s)return json(res,401,{error:'Sign in required'});
   if(u==='/auth/session'&&method==='GET')return json(res,200,{csrf:s.csrf});
+  if(u==='/api/cfo/policy'&&method==='GET')return json(res,200,{policy:cfoGrowthPolicy.policy,scenario:cfoGrowthPolicy.revenueScenario(),mode:'advisory-only',externalActionsEnabled:false});
   if(u==='/api/chat/status'&&method==='GET')return json(res,200,{chatInterfaceInstalled:true,chatEnabled:false,...chatTestPolicy.readiness(),reason:'$5 testing allowance configured. Paid chat calls remain blocked pending atomic spending enforcement and testing.'});
   if(method!=='GET'&&!csrfOK(req,s))return json(res,403,{error:'Invalid CSRF token'});
   if(u==='/auth/logout'&&method==='POST'){sessions.delete(cookie(req));return json(res,200,{ok:true},{'Set-Cookie':'barbarossa_session=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0'});}
