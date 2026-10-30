@@ -132,7 +132,7 @@ async function publishJob(pool,job,env,controls,{uiContractVerified=false,ownerA
   // The provider timeout is inactivity-based. Enforce a wall-clock stop too.
   const timer=setTimeout(()=>{expired=true;browser.close().catch(()=>{});},120000);timer.unref();
   try{
-   const result=await perform(browser.page,release,{uiContractVerified:true,verifyDownloads,beforeCommit:async()=>{await checkPause();await save(pool,job.run_id,data,'creating-draft');},beforePublish:checkPause,afterCreate:async url=>{data.draftUrl=url;await save(pool,job.run_id,data,'draft-created');}});
+   const result=await perform(browser.page,release,{uiContractVerified:true,publishVisible:true,verifyDownloads,beforeCommit:async()=>{await checkPause();await save(pool,job.run_id,data,'creating-draft');},beforePublish:checkPause,afterCreate:async url=>{data.draftUrl=url;await save(pool,job.run_id,data,'draft-created');}});
    if(expired||result.published!==true)throw Error('Publisher outcome uncertain; reconcile existing product');
    data.publication=result;await save(pool,job.run_id,data,'published');return result;
   }finally{clearTimeout(timer);await browser.close();}
