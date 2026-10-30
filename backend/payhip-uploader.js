@@ -33,7 +33,7 @@ async function verifyDownloads(page,files){
   if(sha(Buffer.concat(chunks))!==f.sha256)throw Error('Payhip download does not match reviewed customer file');
  }
 }
-async function perform(page,p,{beforeCommit,beforePublish,afterCreate,verifyDownloads,uiContractVerified=false}={}){
+async function perform(page,p,{beforeCommit,beforePublish,afterCreate,verifyDownloads,uiContractVerified=false,publishVisible=false}={}){
  validateRelease(p);
  // This UI mapping is deliberately not production-activated by the model or
  // an environment switch. Inspect the real seller form and run a controlled
@@ -50,15 +50,29 @@ async function perform(page,p,{beforeCommit,beforePublish,afterCreate,verifyDown
  if(await page.getByText(p.title,{exact:true}).count())throw Error('Product title already exists; reconcile before creating another');
  await (await one(page.getByRole('button',{name:/^add new product$/i}))).click();
  await (await one(page.getByText('Digital Product',{exact:true}))).click();await guard(page);
- const upload=page.getByRole('button',{name:/^upload product file$/i});
+ // Use a unique hidden input when available; otherwise capture the filechooser.
+ // Never assume that clicking the styled button proves a file was attached.
+ const upload=page.getByText(/Upload product file/i);
  await attachReviewedFiles(page,await one(upload),p.files);
- await (await one(page.getByLabel(/^title$/i))).fill(p.title);
- await (await one(page.getByLabel(/^price/i))).fill((p.priceCents/100).toFixed(2));
- await (await one(page.getByLabel(/^description$/i))).fill(p.description);
- // First persist an invisible draft. Verify uploaded bytes before visibility.
- await (await one(page.getByLabel('Invisible',{exact:true}))).check();
+ // The form labels include explanatory suffixes, not bare Title/Price.
+ await (await one(page.getByPlaceholder('Your product title...',{exact:true}))).fill(p.title);
+ const price=page.getByRole('textbox',{name:/^Price\b/i});
+ await (await one(price)).fill((p.priceCents/100).toFixed(2));
+ // Payhip uses a Quill contenteditable editor rather than a textarea.
+ const description=page.locator('.ql-editor[contenteditable="true"]');
+ await (await one(description)).fill(p.description);
+ // Visible is Payhip's default. Explicitly select Invisible and verify.
+ const invisible=page.getByText(/Invisible.*Nobody except you can see this product/i);
+ await (await one(invisible)).click();
+ const selected=page.getByRole('radio',{name:/^Invisible\b/i});
+ const checkbox=page.getByRole('checkbox',{name:/^Invisible\b/i});
+ if(await selected.count()===1){
+  if(!(await selected.isChecked()))throw Error('Invisible visibility was not selected; product creation blocked');
+ }else if(await checkbox.count()===1){
+  if(!(await checkbox.isChecked()))throw Error('Invisible visibility was not selected; product creation blocked');
+ }else throw Error('Invisible visibility state cannot be verified; product creation blocked');
  await beforeCommit(); // Durable checkpoint BEFORE the first product-creation click.
- await (await one(page.getByRole('button',{name:/^add product$/i}))).click();
+ await (await one(page.locator('input[type="button"][value="Add Product"]'))).click();
  await page.waitForLoadState('domcontentloaded');await guard(page);
  const link=await (await one(page.locator('a[href^="https://payhip.com/b/"]'))).getAttribute('href');
  if(!/^https:\/\/payhip\.com\/b\/[a-zA-Z0-9]+$/.test(link))throw Error('Missing product identifier after creation');
@@ -67,6 +81,7 @@ async function perform(page,p,{beforeCommit,beforePublish,afterCreate,verifyDown
  // Verification must download files through the seller UI and compare hashes;
  // visible filenames alone do not establish correct customer delivery.
  await verifyDownloads(page,p.files);
+ if(publishVisible!==true)return {url:link,published:false,hiddenDraft:true,downloadsVerified:true,artifactsDigest:p.quality.artifactsDigest};
  await beforePublish();
  await (await one(page.getByLabel('Visible',{exact:true}))).check();
  await (await one(page.getByRole('button',{name:/^save changes$/i}))).click();
@@ -78,18 +93,14 @@ async function perform(page,p,{beforeCommit,beforePublish,afterCreate,verifyDown
  }finally{await publicPage.close();}
  return {url:link,published:true,artifactsDigest:p.quality.artifactsDigest};
 }
-async function connectProfile(env,{fetchImpl=fetch,chromium}={}){
- if(!env.TINYFISH_API_KEY||!/^prof_[a-f0-9]+$/.test(env.PAYHIP_PROFILE_ID||''))throw Error('TinyFish runtime credential and verified Payhip profile ID required');
- const profile=env.PAYHIP_PROFILE_ID;
- async function api(action,body){const r=await fetchImpl('https://agent.tinyfish.ai/v1/profiles/'+profile+'/'+action,{method:'POST',headers:{'X-API-Key':env.TINYFISH_API_KEY,'Content-Type':'application/json'},body:JSON.stringify(body),redirect:'error',signal:AbortSignal.timeout(60000)});if(!r.ok)throw Error('TinyFish profile operation failed (HTTP '+r.status+')');return r.status===204?null:r.json();}
- const session=await api('setup-session',{url:PRODUCTS,timeout_seconds:180});
- if(typeof session.cdp_url!=='string'||!session.cdp_url.startsWith('wss://')||typeof session.session_id!=='string')throw Error('Invalid remote browser session response');
- // Never emit CDP URLs: they authorize access to an authenticated browser.
- let browser;
- try{browser=await (chromium||require('playwright-core').chromium).connectOverCDP(session.cdp_url,{timeout:30000});}
- catch(e){await api('setup-session/cancel',{session_id:session.session_id}).catch(()=>{});throw Error('Remote authenticated browser connection failed');}
- const context=browser.contexts()[0];if(!context){try{await api('setup-session/cancel',{session_id:session.session_id});}finally{await browser.close();}throw Error('Remote browser context unavailable');}
- const page=context.pages()[0]||await context.newPage();
- return {page,close:async()=>{try{await api('setup-session/cancel',{session_id:session.session_id});}finally{await browser.close();}}};
+async function connectProfile(env){
+ // Fail closed: TinyFish /v1/profiles/{id}/setup-session is for profile
+ // enrollment, not a supported unattended session with saved login state.
+ // Direct Browser API sessions are isolated and do not establish Payhip auth.
+ // Use the supported profile-backed Agent API for read-only discovery;
+ // implement and test a verified authenticated file-upload transport separately.
+ if(!env.TINYFISH_API_KEY||!/^prof_[a-f0-9]+$/.test(env.PAYHIP_PROFILE_ID||''))
+  throw Error('TinyFish credential and Payhip browser profile required');
+ throw Error('Unattended Payhip CDP connection not verified: profile setup sessions cannot be used for uploads. No product was created.');
 }
 module.exports={STORE,validateRelease,guard,one,perform,connectProfile,verifyDownloads};

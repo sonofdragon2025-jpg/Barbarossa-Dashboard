@@ -85,5 +85,5 @@ test('all eight specialists hand off real artifact hashes and stop before unveri
  assert.equal(run.status,'ready-for-automated-release');assert.equal(job.status,'awaiting-publisher-verification');
  assert.equal(stored.quality.builderId,'runtime-build');assert.equal(stored.quality.reviewerId,'runtime-quality');
  upload.validateRelease({store:upload.STORE,...stored.product,priceCents:stored.priceCents,files:runtime.decode(stored.files),quality:stored.quality});
- let browserCalls=0;await runtime.publishJob(pool,job,{},good(),{connect:async()=>{browserCalls++;throw Error('must not open browser');}});assert.equal(browserCalls,0);assert.equal(job.status,'awaiting-publisher-verification');
+ let browserCalls=0;await runtime.publishJob(pool,job,{},good(),{connect:async()=>{browserCalls++;throw Error('must not open browser');}});assert.equal(browserCalls,0);assert.equal(job.status,'awaiting-owner-approval');
 });
