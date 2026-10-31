@@ -73,15 +73,14 @@ async function perform(page,p,{beforeCommit,afterCreate,verifyDownloads,uiContra
 async function connectProfile(env,{fetchImpl=fetch,chromium}={}){
  if(!env.TINYFISH_API_KEY||!/^prof_[a-f0-9]+$/.test(env.PAYHIP_PROFILE_ID||''))throw Error('TinyFish runtime credential and verified Payhip profile ID required');
  const profile=env.PAYHIP_PROFILE_ID;
- async function api(action,body){const r=await fetchImpl('https://agent.tinyfish.ai/v1/profiles/'+profile+'/'+action,{method:'POST',headers:{'X-API-Key':env.TINYFISH_API_KEY,'Content-Type':'application/json'},body:JSON.stringify(body),redirect:'error',signal:AbortSignal.timeout(60000)});if(!r.ok)throw Error('TinyFish profile operation failed (HTTP '+r.status+')');return r.status===204?null:r.json();}
- const session=await api('setup-session',{url:PRODUCTS,timeout_seconds:180});
- if(typeof session.cdp_url!=='string'||!session.cdp_url.startsWith('wss://')||typeof session.session_id!=='string')throw Error('Invalid remote browser session response');
- // Never emit CDP URLs: they authorize access to an authenticated browser.
- let browser;
- try{browser=await (chromium||require('playwright-core').chromium).connectOverCDP(session.cdp_url,{timeout:30000});}
- catch(e){await api('setup-session/cancel',{session_id:session.session_id}).catch(()=>{});throw Error('Remote authenticated browser connection failed');}
- const context=browser.contexts()[0];if(!context){try{await api('setup-session/cancel',{session_id:session.session_id});}finally{await browser.close();}throw Error('Remote browser context unavailable');}
- const page=context.pages()[0]||await context.newPage();
- return {page,close:async()=>{try{await api('setup-session/cancel',{session_id:session.session_id});}finally{await browser.close();}}};
+ async function api(path,body){
+  const r=await fetchImpl('https://agent.tinyfish.ai/v1/profiles/'+profile+'/'+path,{method:'POST',headers:{'X-API-Key':env.TINYFISH_API_KEY,'Content-Type':'application/json'},body:JSON.stringify(body),redirect:'error',signal:AbortSignal.timeout(60000)});
+  if(!r.ok)throw Error('TinyFish profile operation failed (HTTP '+r.status+')');
+  return r.status===204?null:r.json();
+ }
+ // A setup session is temporary and does NOT load the profile's saved Payhip login.
+ // Never use it for unattended seller writes; require a separately verified
+ // authenticated browser/session capability before enabling uploads.
+ throw Error('Authenticated TinyFish profile CDP connection not established; unattended Payhip uploads disabled');
 }
 module.exports={STORE,validateRelease,guard,one,perform,connectProfile,verifyDownloads};
