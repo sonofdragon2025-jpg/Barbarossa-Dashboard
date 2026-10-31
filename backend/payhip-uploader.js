@@ -70,17 +70,28 @@ async function perform(page,p,{beforeCommit,afterCreate,verifyDownloads,uiContra
  return {url:link,published:false,visibility:'invisible',artifactsDigest:p.quality.artifactsDigest,requiresOwnerApproval:true};
 
 }
-async function connectProfile(env,{fetchImpl=fetch,chromium}={}){
- if(!env.TINYFISH_API_KEY||!/^prof_[a-f0-9]+$/.test(env.PAYHIP_PROFILE_ID||''))throw Error('TinyFish runtime credential and verified Payhip profile ID required');
- const profile=env.PAYHIP_PROFILE_ID;
- async function api(path,body){
-  const r=await fetchImpl('https://agent.tinyfish.ai/v1/profiles/'+profile+'/'+path,{method:'POST',headers:{'X-API-Key':env.TINYFISH_API_KEY,'Content-Type':'application/json'},body:JSON.stringify(body),redirect:'error',signal:AbortSignal.timeout(60000)});
-  if(!r.ok)throw Error('TinyFish profile operation failed (HTTP '+r.status+')');
-  return r.status===204?null:r.json();
- }
- // A setup session is temporary and does NOT load the profile's saved Payhip login.
- // Never use it for unattended seller writes; require a separately verified
- // authenticated browser/session capability before enabling uploads.
- throw Error('Authenticated TinyFish profile CDP connection not established; unattended Payhip uploads disabled');
+// Use only a locally encrypted, previously authenticated Playwright storageState.
+// A TinyFish Agent profile cannot be attached to Playwright using a setup-session CDP URL.
+// No browser automation, payment, or seller write occurs during connection.
+async function connectProfile(env=process.env,{launchBrowser}={}){
+ const {withSessionDatabase,SESSION_NAME}=require('./payhip-session-runtime');
+ const {loadEncryptedSession}=require('./payhip-session-store');
+ const {launchIsolatedBrowser}=require('./payhip-local-browser');
+ const state=await withSessionDatabase((pool,key)=>loadEncryptedSession(pool,SESSION_NAME,key),env);
+ if(!state)throw Error('No encrypted Payhip session in Render; TinyFish profile authentication cannot be transferred automatically');
+ if(!Array.isArray(state.cookies)||!Array.isArray(state.origins))throw Error('Invalid saved Payhip browser session');
+ const browser=await (launchBrowser||launchIsolatedBrowser)();
+ try{
+  const context=await browser.newContext({storageState:state,acceptDownloads:true});
+  const page=await context.newPage();
+  await page.goto(PRODUCTS,{waitUntil:'domcontentloaded',timeout:30000});
+  await guard(page);
+  if(new URL(page.url()).pathname!=='/products')throw Error('Saved session did not reach Payhip seller products');
+  const body=await page.locator('body').innerText();
+  if(!body.includes('Maintenance Shift Handoff')||!body.includes('PM Reliability Starter Toolkit'))throw Error('Saved session seller fingerprint not verified');
+  const links=await page.locator('a[href]').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('href')));
+  if(!links.some(h=>{try{return new URL(h,'https://payhip.com').href.replace(/\\/$/,'')===STORE}catch{return false}}))throw Error('Saved session is not verified for Hiott Holding LLC');
+  return {browser,context,page,authenticated:true,close:()=>browser.close()};
+ }catch(err){await browser.close();throw err;}
 }
 module.exports={STORE,validateRelease,guard,one,perform,connectProfile,verifyDownloads};
