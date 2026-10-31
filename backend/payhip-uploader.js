@@ -33,12 +33,12 @@ async function verifyDownloads(page,files){
   if(sha(Buffer.concat(chunks))!==f.sha256)throw Error('Payhip download does not match reviewed customer file');
  }
 }
-async function perform(page,p,{beforeCommit,beforePublish,afterCreate,verifyDownloads,uiContractVerified=false}={}){
+async function perform(page,p,{beforeCommit,afterCreate,verifyDownloads,uiContractVerified=false}={}){
  validateRelease(p);
  // This UI mapping is deliberately not production-activated by the model or
  // an environment switch. Inspect the real seller form and run a controlled
  // upload/download test before supplying this verified adapter capability.
- if(uiContractVerified!==true||typeof verifyDownloads!=='function'||typeof beforeCommit!=='function'||typeof beforePublish!=='function'||typeof afterCreate!=='function')throw Error('Payhip UI contract, durable checkpoints and downloaded-file verification must be verified before upload');
+ if(uiContractVerified!==true||typeof verifyDownloads!=='function'||typeof beforeCommit!=='function'||typeof afterCreate!=='function')throw Error('Payhip UI contract, durable checkpoints and downloaded-file verification must be verified before upload');
  await page.goto(PRODUCTS,{waitUntil:'domcontentloaded',timeout:30000});await guard(page);
  // An account name alone is insufficient: require this exact store link.
  const storeLink=page.locator('a').filter({hasText:/view (?:your )?store/i});
@@ -67,29 +67,31 @@ async function perform(page,p,{beforeCommit,beforePublish,afterCreate,verifyDown
  // Verification must download files through the seller UI and compare hashes;
  // visible filenames alone do not establish correct customer delivery.
  await verifyDownloads(page,p.files);
- await beforePublish();
- await (await one(page.getByLabel('Visible',{exact:true}))).check();
- await (await one(page.getByRole('button',{name:/^save changes$/i}))).click();
- const publicPage=await page.context().newPage();
- try{
-  await publicPage.goto(link,{waitUntil:'domcontentloaded',timeout:30000});await guard(publicPage);
-  const text=await publicPage.locator('body').innerText();
-  if(!text.includes(p.title)||!text.includes((p.priceCents/100).toFixed(2)))throw Error('Public title or price verification failed');
- }finally{await publicPage.close();}
- return {url:link,published:true,artifactsDigest:p.quality.artifactsDigest};
+ return {url:link,published:false,visibility:'invisible',artifactsDigest:p.quality.artifactsDigest,requiresOwnerApproval:true};
+
 }
-async function connectProfile(env,{fetchImpl=fetch,chromium}={}){
- if(!env.TINYFISH_API_KEY||!/^prof_[a-f0-9]+$/.test(env.PAYHIP_PROFILE_ID||''))throw Error('TinyFish runtime credential and verified Payhip profile ID required');
- const profile=env.PAYHIP_PROFILE_ID;
- async function api(action,body){const r=await fetchImpl('https://agent.tinyfish.ai/v1/profiles/'+profile+'/'+action,{method:'POST',headers:{'X-API-Key':env.TINYFISH_API_KEY,'Content-Type':'application/json'},body:JSON.stringify(body),redirect:'error',signal:AbortSignal.timeout(60000)});if(!r.ok)throw Error('TinyFish profile operation failed (HTTP '+r.status+')');return r.status===204?null:r.json();}
- const session=await api('setup-session',{url:PRODUCTS,timeout_seconds:180});
- if(typeof session.cdp_url!=='string'||!session.cdp_url.startsWith('wss://')||typeof session.session_id!=='string')throw Error('Invalid remote browser session response');
- // Never emit CDP URLs: they authorize access to an authenticated browser.
- let browser;
- try{browser=await (chromium||require('playwright-core').chromium).connectOverCDP(session.cdp_url,{timeout:30000});}
- catch(e){await api('setup-session/cancel',{session_id:session.session_id}).catch(()=>{});throw Error('Remote authenticated browser connection failed');}
- const context=browser.contexts()[0];if(!context){try{await api('setup-session/cancel',{session_id:session.session_id});}finally{await browser.close();}throw Error('Remote browser context unavailable');}
- const page=context.pages()[0]||await context.newPage();
- return {page,close:async()=>{try{await api('setup-session/cancel',{session_id:session.session_id});}finally{await browser.close();}}};
+// Use only a locally encrypted, previously authenticated Playwright storageState.
+// A TinyFish Agent profile cannot be attached to Playwright using a setup-session CDP URL.
+// No browser automation, payment, or seller write occurs during connection.
+async function connectProfile(env=process.env,{launchBrowser}={}){
+ const {withSessionDatabase,SESSION_NAME}=require('./payhip-session-runtime');
+ const {loadEncryptedSession}=require('./payhip-session-store');
+ const {launchIsolatedBrowser}=require('./payhip-local-browser');
+ const state=await withSessionDatabase((pool,key)=>loadEncryptedSession(pool,SESSION_NAME,key),env);
+ if(!state)throw Error('No encrypted Payhip session in Render; TinyFish profile authentication cannot be transferred automatically');
+ if(!Array.isArray(state.cookies)||!Array.isArray(state.origins))throw Error('Invalid saved Payhip browser session');
+ const browser=await (launchBrowser||launchIsolatedBrowser)();
+ try{
+  const context=await browser.newContext({storageState:state,acceptDownloads:true});
+  const page=await context.newPage();
+  await page.goto(PRODUCTS,{waitUntil:'domcontentloaded',timeout:30000});
+  await guard(page);
+  if(new URL(page.url()).pathname!=='/products')throw Error('Saved session did not reach Payhip seller products');
+  const body=await page.locator('body').innerText();
+  if(!body.includes('Maintenance Shift Handoff')||!body.includes('PM Reliability Starter Toolkit'))throw Error('Saved session seller fingerprint not verified');
+  const links=await page.locator('a[href]').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('href')));
+  if(!links.some(h=>{try{return new URL(h,'https://payhip.com').origin==='https://payhip.com' && new URL(h,'https://payhip.com').pathname.replace(/\/$/,'')==='/HiottHoldingLLC';}catch{return false;}}))throw Error('Saved session is not verified for Hiott Holding LLC');
+  return {browser,context,page,authenticated:true,close:()=>browser.close()};
+ }catch(err){await browser.close();throw err;}
 }
 module.exports={STORE,validateRelease,guard,one,perform,connectProfile,verifyDownloads};
