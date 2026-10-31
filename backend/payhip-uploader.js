@@ -95,8 +95,3 @@ async function connectProfile(env=process.env,{launchBrowser}={}){
  }catch(err){await browser.close();throw err;}
 }
 module.exports={STORE,validateRelease,guard,one,perform,connectProfile,verifyDownloads};
-),'')===STORE}catch{return false}}))throw Error('Saved session is not verified for Hiott Holding LLC');
-  return {browser,context,page,authenticated:true,close:()=>browser.close()};
- }catch(err){await browser.close();throw err;}
-}
-module.exports={STORE,validateRelease,guard,one,perform,connectProfile,verifyDownloads};
