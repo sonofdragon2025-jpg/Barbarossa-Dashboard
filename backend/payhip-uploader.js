@@ -90,7 +90,12 @@ async function connectProfile(env=process.env,{launchBrowser}={}){
   const body=await page.locator('body').innerText();
   if(!body.includes('Maintenance Shift Handoff')||!body.includes('PM Reliability Starter Toolkit'))throw Error('Saved session seller fingerprint not verified');
   const links=await page.locator('a[href]').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('href')));
-  if(!links.some(h=>{try{return new URL(h,'https://payhip.com').href.replace(/\\/$/,'')===STORE}catch{return false}}))throw Error('Saved session is not verified for Hiott Holding LLC');
+  if(!links.some(h=>{try{return new URL(h,'https://payhip.com').href.replace(new RegExp('/}catch{return false}}))throw Error('Saved session is not verified for Hiott Holding LLC');
+  return {browser,context,page,authenticated:true,close:()=>browser.close()};
+ }catch(err){await browser.close();throw err;}
+}
+module.exports={STORE,validateRelease,guard,one,perform,connectProfile,verifyDownloads};
+),'')===STORE}catch{return false}}))throw Error('Saved session is not verified for Hiott Holding LLC');
   return {browser,context,page,authenticated:true,close:()=>browser.close()};
  }catch(err){await browser.close();throw err;}
 }
