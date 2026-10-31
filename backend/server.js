@@ -107,6 +107,28 @@ const server=http.createServer(async(req,res)=>{
   }
   const s=session(req);if(!s)return json(res,401,{error:'Sign in required'});
   if(u==='/auth/session'&&method==='GET')return json(res,200,{csrf:s.csrf});
+  if(u==='/api/payhip/session-import'&&method==='POST'){
+   if(!csrfOK(req,s))return json(res,403,{error:'Invalid CSRF token'});
+   if(req.headers['content-type']!=='application/json')return json(res,415,{error:'JSON required'});
+   if(!process.env.BARBAROSSA_SESSION_DATABASE_URL||!process.env.BARBAROSSA_SESSION_ENCRYPTION_KEY)return json(res,503,{error:'Encrypted session database not configured'});
+   const b=await read(req);
+   if(!b.storageState||!Array.isArray(b.storageState.cookies)||!Array.isArray(b.storageState.origins)||JSON.stringify(b.storageState).length>12000)return json(res,400,{error:'Invalid browser session state'});
+   const {withSessionDatabase,SESSION_NAME}=require('./payhip-session-runtime');
+   const {saveEncryptedSession}=require('./payhip-session-store');
+   const {launchIsolatedBrowser}=require('./payhip-local-browser');
+   const browser=await launchIsolatedBrowser();
+   try{
+    const context=await browser.newContext({storageState:b.storageState});
+    const payhip=await context.newPage();
+    await payhip.goto('https://payhip.com/products',{waitUntil:'domcontentloaded',timeout:30000});
+    const current=new URL(payhip.url());
+    const body=(await payhip.locator('body').innerText()).slice(0,30000);
+    if(current.hostname!=='payhip.com'||current.pathname!=='/products'||!body.includes('Maintenance Shift Handoff')||!body.includes('PM Reliability Starter Toolkit'))return json(res,403,{authenticated:false,error:'Payhip seller verification failed; nothing saved'});
+    await withSessionDatabase((db,key)=>saveEncryptedSession(db,SESSION_NAME,b.storageState,key));
+    return json(res,200,{authenticated:true,encryptedSessionSaved:true,uploadsEnabled:false,publishingEnabled:false});
+   }finally{await browser.close();}
+  }
+
   if(u==='/api/cfo/policy'&&method==='GET')return json(res,200,{policy:cfoGrowthPolicy.policy,scenario:cfoGrowthPolicy.revenueScenario(),mode:'advisory-only',externalActionsEnabled:false});
   if(u==='/api/chat/status'&&method==='GET')return json(res,200,{chatInterfaceInstalled:true,chatEnabled:false,...chatTestPolicy.readiness(),reason:'$5 testing allowance configured. Paid chat calls remain blocked pending atomic spending enforcement and testing.'});
   if(method!=='GET'&&!csrfOK(req,s))return json(res,403,{error:'Invalid CSRF token'});
