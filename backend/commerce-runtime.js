@@ -124,7 +124,9 @@ async function publishJob(pool,job,env,controls,{uiContractVerified=false,ownerA
  const digest=uploader.validateRelease(release);
  // Publication is forbidden until an explicit, independently verified owner approval is supplied.
  // Draft-only workflows must use a separate operation and must not invoke perform()'s visible-publication path.
- if(ownerApprovalVerified!==true)return save(pool,job.run_id,{...data,publicationApprovalRequired:true},'awaiting-owner-approval');
+ const approved=ownerApprovalVerified===true || (env.BARBAROSSA_AUTOPUBLISH_AUTHORIZED==='true' && data.quality?.verdict==='pass' && data.quality?.rendered===true);
+ if(!approved)return save(pool,job.run_id,{...data,publicationApprovalRequired:true},'awaiting-owner-approval');
+ // Autopublishing is authorized by the owner, but never bypasses verified Payhip UI and delivery checks.
  if(uiContractVerified!==true)return save(pool,job.run_id,data,'awaiting-publisher-verification');
  const checkPause=async()=>{ledger.requireControls(controls);const r=await pool.query('SELECT data FROM barbarossa_state WHERE id=1');if(r.rows[0]?.data.paused!==false)throw Error('Global Pause blocks publisher');};
  return ledger.execute(pool,job.run_id+':payhip-publish',{title:release.title,store:release.store,priceCents:release.priceCents,artifactsDigest:digest},5,controls,async()=>{
