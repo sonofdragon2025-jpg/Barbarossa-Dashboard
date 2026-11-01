@@ -1,6 +1,6 @@
 'use strict';
 const STARTUP_CAP_CENTS = 10000;
-const PROFIT_TRIGGER_CENTS = 50000;
+const PROFIT_TRIGGER_CENTS = 1000000;
 // Candidate calculations only. Reconciled accounts and a restricted funding source
 // are prerequisites for changing the active enforcement cap or executing payments.
 function candidateBudget(history) {
@@ -10,19 +10,19 @@ function candidateBudget(history) {
   if (!latest || !latest.recordCount || !Number.isSafeInteger(latest.netProfitCents)) {
     return {tier: 'profit-reinvestment', capCents: 0, reconciliationRequired: true};
   }
-  return {tier: 'profit-reinvestment', capCents: Math.floor(Math.max(0, latest.netProfitCents) / 4)};
+  return {tier: 'profit-reinvestment', capCents: Math.floor(Math.max(0, latest.netProfitCents) / 10)};
 }
 function profitSharingEligible(history) {
   const latest = history[0];
   return Boolean(latest && latest.recordCount > 0 && Number.isSafeInteger(latest.netProfitCents) && latest.netProfitCents > PROFIT_TRIGGER_CENTS);
 }
 const policy = Object.freeze({
-  version: '2026-10-27', startupCapCents: STARTUP_CAP_CENTS,
+  version: '2026-11-01', startupCapCents: STARTUP_CAP_CENTS,
   triggerMonthlyNetProfitCents: PROFIT_TRIGGER_CENTS, triggerComparison: 'strictly-greater-than',
   profitSharingRequiresPriorMonthAboveTrigger: true,
-  qualifyingCompletedMonthsRequired: 1, reinvestmentPercent: 25,
+  qualifyingCompletedMonthsRequired: 1, reinvestmentPercent: 10,
   basis: 'previous-completed-month-net-profit',
-  ownerAuthorized: true, autonomousReinvestmentAuthorized: true,
+  ownerAuthorized: true, autonomousReinvestmentAuthorized: false,
   personalAccountAccessPermitted: false, existingPayPalSpendingPermitted: false,
   separateRestrictedSpendingAccountRequired: true,
   automaticSpendingEnabled: false, automaticTierChangesEnabled: false
