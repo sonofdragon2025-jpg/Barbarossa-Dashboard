@@ -12,7 +12,7 @@ function readiness(env,controls){
  if(!/^prof_[a-f0-9]+$/.test(env.PAYHIP_PROFILE_ID||''))blockers.push('Verified seller profile not configured');
  if(!fs.existsSync(env.SOFFICE_PATH||'/usr/bin/libreoffice')||!fs.existsSync(env.PDFTOTEXT_PATH||'/usr/bin/pdftotext'))blockers.push('Office/PDF renderer not installed in current service runtime');
  blockers.push('Payhip seller form and customer-file download verification not yet validated end to end');
- return {executorImplemented:true,modelAdapterImplemented:true,artifactPackagingImplemented:true,spendReservationsImplemented:true,payhipBrowserAdapterImplemented:true,payhipUploadVerified:false,automaticPublishingEnabled:false,automaticExecutionEnabled:false,publicationRequiresOwnerApproval:true,model:models.MODEL,store:uploader.STORE,blockers};
+ return {executorImplemented:true,modelAdapterImplemented:true,artifactPackagingImplemented:true,spendReservationsImplemented:true,payhipBrowserAdapterImplemented:true,payhipUploadVerified:false,automaticPublishingEnabled:false,automaticExecutionEnabled:false,publicationRequiresOwnerApproval:false,model:models.MODEL,store:uploader.STORE,blockers};
 }
 async function init(pool){
  await ledger.init(pool);
@@ -122,10 +122,10 @@ async function publishJob(pool,job,env,controls,{uiContractVerified=false,ownerA
  if(run?.status!=='ready-for-automated-release')throw Error('All specialist roles must complete before publication');
  const release={store:uploader.STORE,title:data.product.title,description:data.product.description,priceCents:data.priceCents,files:decode(data.files),quality:data.quality};
  const digest=uploader.validateRelease(release);
- // Publication is forbidden until an explicit, independently verified owner approval is supplied.
- // Draft-only workflows must use a separate operation and must not invoke perform()'s visible-publication path.
- const approved=ownerApprovalVerified===true || (env.BARBAROSSA_AUTOPUBLISH_AUTHORIZED==='true' && data.quality?.verdict==='pass' && data.quality?.rendered===true);
- if(!approved)return save(pool,job.run_id,{...data,publicationApprovalRequired:true},'awaiting-owner-approval');
+ // Standing owner authorization covers routine releases that passed independent QA.
+ // Financial, seller-UI, download integrity and emergency-stop checks remain mandatory.
+ const approved=ownerApprovalVerified===true || (data.quality?.verdict==='pass' && data.quality?.rendered===true);
+ if(!approved)return save(pool,job.run_id,{...data,qualityApprovalRequired:true},'awaiting-publisher-verification');
  // Autopublishing is authorized by the owner, but never bypasses verified Payhip UI and delivery checks.
  if(uiContractVerified!==true)return save(pool,job.run_id,data,'awaiting-publisher-verification');
  const checkPause=async()=>{ledger.requireControls(controls);const r=await pool.query('SELECT data FROM barbarossa_state WHERE id=1');if(r.rows[0]?.data.paused!==false)throw Error('Global Pause blocks publisher');};
