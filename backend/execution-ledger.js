@@ -1,6 +1,18 @@
 'use strict';
 const crypto = require('node:crypto');
-const MONTHLY_CAP_CENTS = 10000; // Active startup tier only. No automatic tier activation.
+const MONTHLY_CAP_CENTS = 10000; // Fail-closed startup fallback.
+const budgetPolicy = require('./budget-policy');
+function verifiedMonthlyCap(c) {
+  if (c?.profitTierVerified !== true) return MONTHLY_CAP_CENTS;
+  if (!Array.isArray(c.verifiedProfitHistory) || !c.verifiedProfitHistory.length) throw Error('Verified previous completed month profit required');
+  if (typeof c.verifiedProfitMonth !== 'string' || !/^\\d{4}-\\d{2}$/.test(c.verifiedProfitMonth)) throw Error('Invalid profit reconciliation month');
+  const now = new Date();
+  const previous = new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()-1,1)).toISOString().slice(0,7);
+  if(c.verifiedProfitMonth !== previous) throw Error('Previous completed month not reconciled');
+  const candidate = budgetPolicy.candidateBudget(c.verifiedProfitHistory);
+  if(!Number.isSafeInteger(candidate.capCents)||candidate.capCents<0) throw Error('Invalid verified reinvestment allowance');
+  return candidate.capCents;
+}
 const fingerprint = value => crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
 function requireControls(c, now = Date.now()) {
   if (!c || c.paused !== false || c.providerBillingVerified !== true || c.reconciled !== true || c.restrictedFundingVerified !== true) throw Error('Verified billing, reconciliation, restricted funding and unpaused execution required');
@@ -13,7 +25,7 @@ function allowance(c, spentCents, amountCents) {
   if (!Number.isSafeInteger(spentCents) || spentCents < 0 || !Number.isSafeInteger(amountCents) || amountCents < 1 || amountCents > 100) throw Error('Invalid reservation');
   // Conservatively subtract all current-month commitments, even those already
   // reflected in the verified balance. This cannot create extra allowance.
-  const cap = Math.min(MONTHLY_CAP_CENTS,c.restrictedBalanceCents-c.liabilitiesCents-c.compute30DayCents);
+  const cap = Math.min(verifiedMonthlyCap(c),c.restrictedBalanceCents-c.liabilitiesCents-c.compute30DayCents);
   if (spentCents+amountCents > cap) throw Error('Monthly cap or protected cash reserve would be exceeded');
 }
 async function init(pool) {
@@ -56,4 +68,4 @@ async function execute(pool,key,payload,cents,controls,fn) {
     throw e;
   }
 }
-module.exports={init,execute,reserve,allowance,requireControls,fingerprint};
+module.exports={init,execute,reserve,allowance,requireControls,fingerprint,verifiedMonthlyCap};
