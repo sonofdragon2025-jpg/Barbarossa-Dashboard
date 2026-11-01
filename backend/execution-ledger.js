@@ -5,7 +5,7 @@ const budgetPolicy = require('./budget-policy');
 function verifiedMonthlyCap(c) {
   if (c?.profitTierVerified !== true) return MONTHLY_CAP_CENTS;
   if (!Array.isArray(c.verifiedProfitHistory) || !c.verifiedProfitHistory.length) throw Error('Verified previous completed month profit required');
-  if (typeof c.verifiedProfitMonth !== 'string' || !/^\\d{4}-\\d{2}$/.test(c.verifiedProfitMonth)) throw Error('Invalid profit reconciliation month');
+  if (typeof c.verifiedProfitMonth !== 'string' || !/^\d{4}-\d{2}$/.test(c.verifiedProfitMonth)) throw Error('Invalid profit reconciliation month');
   const now = new Date();
   const previous = new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()-1,1)).toISOString().slice(0,7);
   if(c.verifiedProfitMonth !== previous) throw Error('Previous completed month not reconciled');
