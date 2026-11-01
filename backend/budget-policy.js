@@ -17,7 +17,7 @@ function profitSharingEligible(history) {
   return Boolean(latest && latest.recordCount > 0 && Number.isSafeInteger(latest.netProfitCents) && latest.netProfitCents > PROFIT_TRIGGER_CENTS);
 }
 const policy = Object.freeze({
-  version: '2026-10-27', startupCapCents: STARTUP_CAP_CENTS,
+  version: '2026-11-01', startupCapCents: STARTUP_CAP_CENTS,
   triggerMonthlyNetProfitCents: PROFIT_TRIGGER_CENTS, triggerComparison: 'strictly-greater-than',
   profitSharingRequiresPriorMonthAboveTrigger: true,
   qualifyingCompletedMonthsRequired: 1, reinvestmentPercent: 25,
