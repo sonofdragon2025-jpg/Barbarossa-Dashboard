@@ -14,7 +14,7 @@ function report(env, runtime) {
   ownerLoginConfigured:present('BARBAROSSA_OWNER_PASSWORD'),
   models:{openaiKeyConfigured:present('OPENAI_API_KEY'),anthropicKeyConfigured:present('ANTHROPIC_API_KEY'),adapterImplemented:true},
   workers:{configuredCount:runtime.workerCount,modelWorkersRunning:false},
-  payhip:{webhookKeyConfigured:present('PAYHIP_API_KEY'),browserKeyConfigured:present('TINYFISH_API_KEY'),profileIdConfigured:/^prof_[a-f0-9]+$/.test(env.PAYHIP_PROFILE_ID||''),uploaderImplemented:false,automaticPublishingOperational:false},
+  payhip:{webhookKeyConfigured:present('PAYHIP_API_KEY'),browserKeyConfigured:present('TINYFISH_API_KEY'),profileIdConfigured:/^prof_[a-f0-9]+$/.test(env.PAYHIP_PROFILE_ID||''),uploaderImplemented:true,uploadVerified:false,automaticPublishingOperational:false},
   controls:{globalPause:runtime.paused,providerBillingVerified:false,externalExecutionEnabled:false},
   credentialsIncluded:false
  };
