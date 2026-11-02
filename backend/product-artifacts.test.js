@@ -16,7 +16,8 @@ test('valid product packages DOCX and CSV with matching hashes',async()=>{
  const p=sample();assert.equal(validate(p),p);
  const files=await packageProduct(p);
  assert.deepEqual(files.map(f=>f.name),['guide.docx','worksheet.csv']);
- for(const f of files){assert.ok(f.buffer.length>0);assert.equal(sha(f.buffer),f.sha256);}\n assert.ok(files[0].buffer.length>1000);
+ for(const f of files){assert.ok(f.buffer.length>0);assert.equal(sha(f.buffer),f.sha256);}
+ assert.ok(files[0].buffer.length>1000);
  assert.equal(files[0].buffer.subarray(0,2).toString(),'PK');
  assert.equal(files[1].buffer.toString('utf8'),csv(p));
 });
