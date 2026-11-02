@@ -1,0 +1,16 @@
+'use strict';
+const assert=require('node:assert/strict');
+const test=require('node:test');
+const council=require('./opportunity-council');
+const proposal={opportunityId:'test-opportunity',summary:'Create a maintenance template',evidence:['https://example.com/research'],estimatedRevenueCents:2000,estimatedCostCents:1000,risks:['Demand not independently verified']};
+const reports=()=>council.ROLES.map(role=>council.submit(role,proposal));
+test('accepts all five advisory roles',()=>assert.equal(reports().length,5));
+test('calculates projected net, not verified profit',()=>{const r=reports()[0];assert.equal(r.estimatedNetCents,1000);assert.equal(r.verifiedProfit,false)});
+test('rejects unauthorized roles',()=>assert.throws(()=>council.submit('unknown',proposal)));
+test('rejects non-HTTPS evidence',()=>assert.throws(()=>council.submit('scout',{...proposal,evidence:['http://example.com']})));
+test('rejects negative estimated costs',()=>assert.throws(()=>council.submit('scout',{...proposal,estimatedCostCents:-1})));
+test('requires all five role reports',()=>assert.throws(()=>council.evaluate(reports().slice(1))));
+test('rejects mismatched opportunities',()=>assert.throws(()=>council.evaluate([...reports().slice(0,4),{...reports()[4],opportunityId:'other'}])));
+test('defaults to advisory-only and blocked execution',()=>{const result=council.evaluate(reports());assert.equal(result.advisoryOnly,true);assert.equal(result.canExecutePaid,false);assert.equal(result.canPublish,false)});
+test('cannot authorize paid execution even if flags are all set',()=>{const result=council.evaluate(reports(),{providerBillingVerified:true,reconciled:true,restrictedFundingVerified:true,paused:false,ownerApproved:true,monthlyCapCents:10000});assert.equal(result.canExecutePaid,false);assert.equal(result.canPublish,false)});
+test('flags nonpositive projected margin',()=>{const negative=reports().map(r=>({...r,estimatedNetCents:-1}));assert.match(council.evaluate(negative).blockers.join(' '),/margin/)});
