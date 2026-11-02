@@ -12,7 +12,7 @@ function readiness(env,controls){
  if(!/^prof_[a-f0-9]+$/.test(env.PAYHIP_PROFILE_ID||''))blockers.push('Verified seller profile not configured');
  if(!fs.existsSync(env.SOFFICE_PATH||'/usr/bin/libreoffice')||!fs.existsSync(env.PDFTOTEXT_PATH||'/usr/bin/pdftotext'))blockers.push('Office/PDF renderer not installed in current service runtime');
  blockers.push('Payhip seller form and customer-file download verification not yet validated end to end');
- return {executorImplemented:true,modelAdapterImplemented:true,artifactPackagingImplemented:true,spendReservationsImplemented:true,payhipBrowserAdapterImplemented:true,payhipUploadVerified:false,automaticPublishingEnabled:false,automaticExecutionEnabled:false,publicationRequiresOwnerApproval:false,model:models.MODEL,store:uploader.STORE,blockers};
+ return {executorImplemented:true,modelAdapterImplemented:true,artifactPackagingImplemented:true,spendReservationsImplemented:true,payhipBrowserAdapterImplemented:true,payhipUploadVerified:false,automaticPublishingEnabled:false,automaticExecutionEnabled:false,publicationRequiresOwnerApproval:true,model:models.MODEL,store:uploader.STORE,blockers};
 }
 async function init(pool){
  await ledger.init(pool);
