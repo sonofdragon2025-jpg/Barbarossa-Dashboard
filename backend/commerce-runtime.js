@@ -122,9 +122,10 @@ async function publishJob(pool,job,env,controls,{uiContractVerified=false,ownerA
  if(run?.status!=='ready-for-automated-release')throw Error('All specialist roles must complete before publication');
  const release={store:uploader.STORE,title:data.product.title,description:data.product.description,priceCents:data.priceCents,files:decode(data.files),quality:data.quality};
  const digest=uploader.validateRelease(release);
- // Standing owner authorization covers routine releases that passed independent QA.
- // Financial, seller-UI, download integrity and emergency-stop checks remain mandatory.
- const approved=ownerApprovalVerified===true || (data.quality?.verdict==='pass' && data.quality?.rendered===true);
+ // A model QA pass never substitutes for explicit owner authorization to publish.
+ // Do not start browser automation while approval is absent; repeated Cloudflare
+ // challenges must be handled by a human or a provider-supported integration.
+ const approved=ownerApprovalVerified===true;
  if(!approved)return save(pool,job.run_id,{...data,qualityApprovalRequired:true},'awaiting-publisher-verification');
  // Autopublishing is authorized by the owner, but never bypasses verified Payhip UI and delivery checks.
  if(uiContractVerified!==true)return save(pool,job.run_id,data,'awaiting-publisher-verification');
