@@ -19,6 +19,6 @@ test('provider preflight is read-only and never exposes credentials or response 
 test('setup status returns presence only and cannot grant execution',()=>{
  const report=setup.report({DATABASE_URL:'secret-database',OPENAI_API_KEY:'secret-model',PAYHIP_API_KEY:'secret-payhip'},{storageReady:true,databaseConfigured:true,workerCount:0,paused:true});
  assert.equal(report.database.initialized,true);assert.equal(report.models.openaiKeyConfigured,true);
- assert.equal(report.models.anthropicKeyConfigured,false);assert.equal(report.payhip.uploaderImplemented,false);
+ assert.equal(report.models.anthropicKeyConfigured,false);assert.equal(report.payhip.uploaderImplemented,true);assert.equal(report.payhip.uploadVerified,false);assert.equal(report.payhip.automaticPublishingOperational,false);
  assert.equal(report.controls.externalExecutionEnabled,false);assert.equal(JSON.stringify(report).includes('secret-'),false);
 });
