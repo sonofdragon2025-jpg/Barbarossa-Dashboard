@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "module": "video_clipping",
+  "status": "integration_pending",
+  "modes": [
+    "authorized_source_clips",
+    "original_videos"
+  ],
+  "monthly_total_cap_usd": 100,
+  "owner_approval_required_for": [
+    "publication",
+    "external_upload",
+    "paid_actions",
+    "purchases",
+    "subscriptions",
+    "permissions_changes"
+  ],
+  "global_pause": true,
+  "external_paid_actions_enabled": false,
+  "automatic_publishing_enabled": false,
+  "source_rights_required": true,
+  "platform_connections_verified": false,
+  "verified_revenue_usd": null,
+  "output": {
+    "aspect_ratio": "9:16",
+    "target_resolution": "1080x1920",
+    "duration_seconds": {
+      "min": 15,
+      "max": 60
+    },
+    "captions": true
+  },
+  "budget_policy": "Fail closed if projected total spend exceeds remaining monthly cap or cost cannot be verified."
+}
