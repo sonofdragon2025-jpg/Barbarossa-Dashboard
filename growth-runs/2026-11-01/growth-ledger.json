@@ -1,0 +1,89 @@
+{
+  "run_date": "2026-11-01",
+  "owner": "Hiott Holding LLC",
+  "product_id": "HH-SPARES-20261101-V1",
+  "title": "Critical Spares Decision Kit",
+  "version": "1.0",
+  "price_usd": 19,
+  "stage": "completed_saleable_draft",
+  "saleable_assets": {
+    "buyer_zip_library_path": "/Barbarossa-Growth/2026-11-01/Hiott_Holding_Critical_Spares_Decision_Kit_v1_Buyer_Package.zip",
+    "guide_pdf_library_path": "/Barbarossa-Growth/2026-11-01/Hiott_Holding_Critical_Spares_Decision_Kit_v1_Guide.pdf",
+    "workbook_xlsx_library_path": "/Barbarossa-Growth/2026-11-01/Hiott_Holding_Critical_Spares_Decision_Kit_v1.xlsx",
+    "landing_copy_library_path": "/Barbarossa-Growth/2026-11-01/Hiott_Holding_Critical_Spares_Decision_Kit_v1_Listing_Draft.md",
+    "x_thread_library_path": "/Barbarossa-Growth/2026-11-01/Hiott_Holding_Critical_Spares_Decision_Kit_v1_X_Thread_Draft.txt"
+  },
+  "quality_checks": {
+    "workbook_sheets": 5,
+    "formula_error_scan": "zero_matches",
+    "demo_rows": 5,
+    "worked_example": "passed",
+    "guide_pdf_pages": 7,
+    "buyer_zip_contents": 3,
+    "thread_posts": 3,
+    "thread_each_under_280_chars": true,
+    "synthetic_data_disclosed": true,
+    "external_transfers_enabled": false
+  },
+  "duplication_review": {
+    "checked_library_products": [
+      "Maintenance Shift Handoff Template",
+      "PM Reliability Starter Toolkit",
+      "PM Program Starter Kit",
+      "Root Cause Analysis Toolkit",
+      "Maintenance KPI Dashboard Toolkit",
+      "Technician Training Matrix Toolkit",
+      "CMMS Work Order Quality Toolkit"
+    ],
+    "result": "critical spares stocking and reorder governance is distinct"
+  },
+  "payhip": {
+    "connection_verified": false,
+    "listing_created": false,
+    "listing_id": null,
+    "listing_url": null,
+    "published_at": null,
+    "views": null,
+    "sales": null,
+    "price_change_72h": "not_applicable_no_verified_listing"
+  },
+  "x": {
+    "connection_verified": false,
+    "thread_posted": false,
+    "post_ids": [],
+    "engagement": null
+  },
+  "financials": {
+    "verified_gross_revenue_cents": null,
+    "verified_refunds_cents": null,
+    "verified_processing_fees_cents": null,
+    "known_new_spending_commitments_cents": 0,
+    "other_run_costs_cents": null,
+    "monthly_spend_verified": false,
+    "net_profit_cents": null,
+    "net_profit_note": "Cannot calculate without verified revenue and complete costs. Do not interpret null as zero."
+  },
+  "safety": {
+    "monthly_cap_cents": 10000,
+    "global_pause": "reported_true_in_backend_source_not_runtime_verified",
+    "no_paid_actions": true,
+    "owner_approval_for_financial_transactions": true,
+    "no_auto_publication_without_verified_uploader": true
+  },
+  "research": {
+    "sources": [
+      "https://sphera.com/resources/report/2026-sphera-mro-survey-report/",
+      "https://www.reddit.com/r/InventoryManagement/comments/1sj87jd/",
+      "https://www.reddit.com/r/InventoryManagement/comments/1vs9h3x/",
+      "https://github.com/riteshworks/inventory-procurement-tracker",
+      "https://github.com/GmsoftLtd/bc-reorder-point"
+    ],
+    "x_public_trend_verification": "no credible relevant public X post verified; no claim"
+  },
+  "next_steps": [
+    "Verify supported authenticated Payhip hidden-draft upload",
+    "Confirm seller pricing/quality gate and publication authorization",
+    "Verify revenue, platform fees, engagement and monthly spend from connected provider records",
+    "Only evaluate 72-hour price policy after a verified publication timestamp and verified zero sales"
+  ]
+}
