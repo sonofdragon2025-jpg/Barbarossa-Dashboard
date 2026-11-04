@@ -5,8 +5,8 @@
 **Status:** buyer package generated locally, GitHub record only; not uploaded, listed, or published.
 **Scope:** vendor/parts/approval follow-up ownership and escalation. Distinct from Shift Handoff, Critical Spares, PM Deferral, and Repeat Failure kits.
 **Deliverables generated:** XLSX workbook with 5 tabs and formula-based overdue indicators; PDF implementation guide; ZIP buyer package; landing-page draft; three-post educational X thread; research and QA notes.
-**Local package SHA-256:** 69ef2c49c4b2d098bae2a766206f99063e464aceca8bd2902f5b2ecfe72d837e
-**Local XLSX SHA-256:** a87e7ca31c876cebe8e1ce38a175a35ef0dff0239ea6fe60960778aaabc16254
+**Local package SHA-256:** pending-final-hash
+**Local XLSX SHA-256:** pending-final-hash
 **Local PDF SHA-256:** f1693e6f2424ada0e37e8c7ba6a15dd48fe93cf6bee32ddbe1079331b1607404
 
 ## Landing page draft
@@ -41,4 +41,4 @@ Stop losing track of maintenance work orders while waiting for parts, service ve
 - Coordination: draft only; avoid duplicate work in every-two-days product task.
 
 ## QA
-ZIP CRC check passed. XLSX and PDF signatures checked. Workbook includes 5 tabs, sample rows explicitly fictional, and formula-driven overdue flags. Formula outcomes were not independently recalculated in Excel/LibreOffice; user should verify before publishing. The persistent GitHub record stores metadata and copy, not the binary buyer package.
+ZIP CRC check passed. XLSX and PDF signatures checked. Workbook includes 5 tabs, sample rows explicitly fictional, and formula-driven overdue flags. Formula caches were checked after changing date text to actual Excel dates; zero cached error cells in the example register. External Excel/LibreOffice compatibility remains untested. The persistent GitHub record stores metadata and copy, not the binary buyer package.
