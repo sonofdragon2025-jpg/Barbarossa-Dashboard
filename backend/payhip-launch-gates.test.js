@@ -24,3 +24,8 @@ test('reviewer must be independent and rendering verified',()=>{
  const p=release();p.quality.reviewerId=p.quality.builderId;
  assert.throws(()=>validateRelease(p),/Independent/);
 });
+
+test('draft listing preserves approved handoff price and owner release gate',()=>{
+ const listing=require('./product-queue').listingFor({slug:'shift-handoff',title:'Maintenance Shift Handoff Template',day:'2026-11-04'});
+ assert.equal(listing.suggestedPriceCents,699);assert.equal(listing.visibility,'invisible');assert.equal(listing.publishReady,false);assert.equal(listing.publicationRequiresOwnerApproval,true);assert.equal(listing.automaticPublicationAuthorized,false);
+});

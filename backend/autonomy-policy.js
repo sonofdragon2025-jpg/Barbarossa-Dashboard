@@ -4,13 +4,14 @@ const {policy: budget} = require('./budget-policy');
 const ROUTINE = Object.freeze(['research','create-product','publish-product','price-product','publish-content','deploy-product','affiliate','advertise','hire-agent','manage-business-wallet','reinvest','delegate','support','paper-trade']);
 const policy = Object.freeze({
   version:'2026-10-27-autonomy-1', objective:'Maximize sustainable long-term net revenue and capital growth',
-  routineOwnerApprovalRequired:false, automaticPublicationAuthorized:true,
+  routineOwnerApprovalRequired:false, publicationRequiresOwnerApproval:true, automaticPublicationAuthorized:false,
   minimumComputeRunwayDays:30, performanceReviewHours:24, experimentReviewDays:7,
   activeLiveTradingCapitalCents:0, borrowingPermitted:false, leveragePermitted:false,
   personalFundingAccessPermitted:false, tokenizationPermitted:false,
   budgetPolicyVersion:budget.version, routineActions:ROUTINE
 });
 function authority(action) {
+  if (['publish-product','publish-content'].includes(action)) return {authorized:false,ownerApprovalRequired:true};
   if (ROUTINE.includes(action)) return {authorized:true,ownerApprovalRequired:false};
   if (action==='live-trade') return {authorizedInPrinciple:true,authorized:false,reason:'No funded isolated trading allocation or validated strategy/risk configuration exists; live capital limit is zero'};
   return {authorized:false,reason:'Outside routine mandate; pause affected action and document for owner resolution'};

@@ -4,7 +4,9 @@ const assert=require('node:assert/strict');
 const p=require('./autonomy-policy');
 const funds={accountingVerified:true,monthlyCapCents:10000,spentCents:1000,committedCents:2000,restrictedBalanceCents:20000,protectedLiabilitiesCents:1000,projectedDailyComputeCents:100};
 test('routine standing authority removes repeat approval without enabling executors',()=>{
- for(const action of ['publish-product','price-product','deploy-product','hire-agent','advertise'])assert.deepEqual(p.authority(action),{authorized:true,ownerApprovalRequired:false});
+ for(const action of ['price-product','deploy-product','hire-agent','advertise'])assert.deepEqual(p.authority(action),{authorized:true,ownerApprovalRequired:false});
+ for(const action of ['publish-product','publish-content'])assert.deepEqual(p.authority(action),{authorized:false,ownerApprovalRequired:true});
+ assert.equal(p.readiness().policy.automaticPublicationAuthorized,false);
  assert.equal(p.readiness().executionEnabled,false);
  assert.equal(p.authority('borrow').authorized,false);
  assert.equal(p.authority('live-trade').authorized,false);
