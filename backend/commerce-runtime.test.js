@@ -60,9 +60,16 @@ test('readiness never treats installed code or supplied credentials as a verifie
 });
 test('all eight specialists hand off real artifact hashes and stop before unverified publication',async()=>{
  const coordinator=require('./agent-coordinator');let run=coordinator.createRun({requestKey:'integration-fixture',goal:'Create a maintenance communication toolkit'});
- let stored={};const job={run_id:run.id,day:'2026-10-27',data:{}};
+ let stored={},receipt=null;const job={run_id:run.id,day:'2026-10-27',data:{}};
  const pool={connect:async()=>({query,release(){}}),query};
  async function query(sql,args=[]){
+  if(sql.startsWith('SELECT * FROM barbarossa_execution_receipts'))return {rows:receipt?[receipt]:[]};
+  if(sql.startsWith('SELECT data FROM barbarossa_state'))return {rows:[{data:{paused:false}}]};
+  if(sql.startsWith('SELECT spent_cents'))return {rows:[{spent_cents:0}]};
+  if(sql.startsWith('INSERT INTO barbarossa_execution_receipts')){receipt={fingerprint:args[1],status:'in-flight'};return {rowCount:1};}
+  if(sql.includes("SET status='succeeded'")){receipt.status='succeeded';receipt.result=JSON.parse(args[1]);return {rowCount:1};}
+  if(sql.includes("SET status='uncertain'")){receipt.status='uncertain';return {rowCount:1};}
+  if(/^(INSERT INTO barbarossa_monthly_budget|UPDATE barbarossa_monthly_budget|INSERT INTO barbarossa_expenses|SELECT pg_advisory_xact_lock)/.test(sql))return {rows:[],rowCount:1};
   if(sql.startsWith('SELECT data FROM barbarossa_agent_runs'))return {rows:[{data:structuredClone(run)}]};
   if(sql.startsWith('UPDATE barbarossa_agent_runs')){run=JSON.parse(args[1]);return {rowCount:1};}
   if(sql.startsWith('UPDATE barbarossa_runtime_jobs')){stored=JSON.parse(args[1]);job.data=structuredClone(stored);job.status=args[2];return {rowCount:1};}
@@ -86,4 +93,11 @@ test('all eight specialists hand off real artifact hashes and stop before unveri
  assert.equal(stored.quality.builderId,'runtime-build');assert.equal(stored.quality.reviewerId,'runtime-quality');
  upload.validateRelease({store:upload.STORE,...stored.product,priceCents:stored.priceCents,files:runtime.decode(stored.files),quality:stored.quality});
  let browserCalls=0;await runtime.publishJob(pool,job,{},good(),{connect:async()=>{browserCalls++;throw Error('must not open browser');}});assert.equal(browserCalls,0);assert.equal(job.status,'awaiting-publisher-verification');
+ const url='https://payhip.com/b/TestDraft';let closed=false;
+ const draft=await runtime.publishJob(pool,job,{},good(),{
+  ownerApprovalVerified:true,uiContractVerified:true,
+  connect:async()=>({page:{},close:async()=>{closed=true;}}),
+  perform:async(page,release,hooks)=>{await hooks.beforeCommit();await hooks.afterCreate(url);return {url,published:false,visibility:'invisible',requiresOwnerApproval:true,artifactsDigest:release.quality.artifactsDigest};}
+ });
+ assert.equal(draft.published,false);assert.equal(job.status,'draft-awaiting-owner-approval');assert.equal(job.data.draftUrl,url);assert.equal(job.data.qualityApprovalRequired,true);assert.equal(receipt.status,'succeeded');assert.equal(closed,true);
 });

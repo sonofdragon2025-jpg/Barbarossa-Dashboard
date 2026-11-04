@@ -91,7 +91,7 @@ function completeTask(current, step, {expectedVersion, output}) {
 function status() {
   return {
     mode: 'coordination-only', coordinatorImplemented: true, autonomousWorkersEnabled: false,
-    autonomy: autonomyPolicy.readiness(), publicationRequiresOwnerApproval: false,
+    autonomy: autonomyPolicy.readiness(), publicationRequiresOwnerApproval: true,
     roles: STEPS.map(([step, role, dependencies]) => ({step, role, dependencies})),
     externalActionsEnabled: false, automaticPublishingEnabled: false, paymentsEnabled: false,
     externalHiringEnabled: false, walletEnabled: false, tokenizationEnabled: false,
